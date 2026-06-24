@@ -1,0 +1,2667 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>日程助手</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#F0F2F5; --surface:#fff; --surface2:#F7F8FA;
+  --border:#E4E7ED; --border2:#D0D5DD;
+  --text:#1A1F2E; --text2:#6B7280; --muted:#9CA3AF;
+  --accent:#3B6FE8; --accent-l:#EEF2FF; --accent-h:#2F5DD4;
+  --green:#10B981; --green-l:#ECFDF5;
+  --orange:#F59E0B; --orange-l:#FFFBEB;
+  --red:#EF4444; --red-l:#FEF2F2;
+  --purple:#8B5CF6; --purple-l:#F5F3FF;
+  --gray:#F3F4F6;
+  --sh:0 1px 3px rgba(0,0,0,.06);
+  --sh2:0 4px 12px rgba(0,0,0,.08);
+  --sh3:0 10px 30px rgba(0,0,0,.12);
+  --r:12px; --r2:8px;
+  --font:'Microsoft YaHei','微软雅黑',-apple-system,sans-serif;
+}
+body { font-family:var(--font); background:var(--bg); color:var(--text); font-size:13px; line-height:1.5; min-height:100vh; }
+
+/* ── TOPBAR ── */
+.topbar { background:var(--surface); border-bottom:1px solid var(--border); padding:0 24px; height:52px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:var(--sh); }
+.tl { display:flex; align-items:center; gap:10px; }
+.logo { width:28px; height:28px; background:var(--accent); border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.app-name { font-size:15px; font-weight:700; letter-spacing:-.3px; }
+.tr { display:flex; align-items:center; gap:6px; }
+.icon-btn { width:32px; height:32px; border:none; background:transparent; border-radius:var(--r2); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text2); transition:background .15s; }
+.icon-btn:hover { background:var(--gray); }
+.sync-status { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:500; }
+.sync-ok { background:var(--green-l); color:#059669; }
+.sync-off { background:var(--orange-l); color:#B45309; }
+.sync-err { background:var(--red-l); color:var(--red); }
+.sync-ing { background:var(--accent-l); color:var(--accent); }
+
+/* ── MAIN ── */
+.main { max-width:940px; margin:0 auto; padding:20px 20px 130px; }
+
+/* ── SETUP BANNER ── */
+.setup-banner { background:linear-gradient(135deg,var(--accent),var(--purple)); color:white; border-radius:var(--r); padding:16px 20px; margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.setup-banner h3 { font-size:14px; font-weight:700; margin-bottom:3px; }
+.setup-banner p { font-size:12px; opacity:.85; }
+.setup-btn { background:rgba(255,255,255,.2); border:1.5px solid rgba(255,255,255,.4); color:white; padding:6px 14px; border-radius:8px; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; transition:background .15s; }
+.setup-btn:hover { background:rgba(255,255,255,.3); }
+
+/* ── WEEK CALENDAR ── */
+.week-card { background:var(--surface); border-radius:var(--r); box-shadow:var(--sh); padding:16px 20px 14px; margin-bottom:16px; }
+.week-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.week-title { font-size:14px; font-weight:600; }
+.week-nav { display:flex; gap:4px; }
+.nav-btn { height:26px; min-width:26px; padding:0 6px; border:1px solid var(--border); background:white; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text2); font-size:11px; font-family:var(--font); transition:all .15s; }
+.nav-btn:hover { border-color:var(--accent); color:var(--accent); }
+.week-days { display:grid; grid-template-columns:repeat(7,1fr); gap:6px; }
+.day-cell { display:flex; flex-direction:column; align-items:center; gap:3px; padding:8px 4px; border-radius:10px; cursor:pointer; transition:all .15s; border:1.5px solid transparent; }
+.day-cell:hover:not(.today) { background:var(--accent-l); }
+.day-cell.today { background:var(--accent); }
+.day-cell.selected:not(.today) { background:var(--accent-l); border-color:var(--accent); }
+.day-name { font-size:10px; color:var(--muted); font-weight:500; }
+.day-cell.today .day-name { color:rgba(255,255,255,.75); }
+.day-num { font-size:16px; font-weight:700; line-height:1; }
+.day-cell.today .day-num { color:white; }
+.task-badge { font-size:9px; font-weight:600; padding:1px 5px; border-radius:10px; background:var(--accent-l); color:var(--accent); }
+.day-cell.today .task-badge { background:rgba(255,255,255,.25); color:white; }
+.density-bar { width:24px; height:3px; border-radius:2px; background:var(--border); }
+.day-cell.today .density-bar { background:rgba(255,255,255,.3); }
+.density-fill { height:100%; border-radius:2px; background:var(--accent); transition:width .3s; }
+.day-cell.today .density-fill { background:rgba(255,255,255,.8); }
+
+/* ── SECTION HDR ── */
+.sec-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.sec-title { font-size:15px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.date-lbl { font-size:12px; font-weight:400; color:var(--muted); }
+.pending-cnt { font-size:11px; color:var(--muted); }
+
+/* ── FILTER ── */
+.filter-bar { background:var(--surface); border-radius:var(--r2); padding:8px 12px; margin-bottom:12px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; box-shadow:var(--sh); }
+.filter-lbl { font-size:11px; color:var(--muted); font-weight:500; white-space:nowrap; }
+.chips { display:flex; gap:6px; flex-wrap:wrap; }
+.chip { padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; cursor:pointer; border:1px solid var(--border); background:white; color:var(--text2); transition:all .15s; user-select:none; }
+.chip:hover { border-color:var(--accent); color:var(--accent); }
+.chip.on { background:var(--accent); border-color:var(--accent); color:white; }
+
+/* ── AI PARSING ── */
+.ai-bar { display:none; align-items:center; gap:8px; padding:10px 14px; background:var(--accent-l); border-radius:10px; margin-bottom:10px; font-size:12px; color:var(--accent); font-weight:500; }
+.ai-bar.show { display:flex; }
+.spin { width:14px; height:14px; border:2px solid rgba(59,111,232,.2); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── TODO TABLE ── */
+.todo-card { background:var(--surface); border-radius:var(--r); box-shadow:var(--sh); overflow:hidden; }
+table { width:100%; border-collapse:collapse; table-layout:fixed; }
+thead tr { background:var(--surface2); border-bottom:1px solid var(--border); }
+th { padding:9px 12px; text-align:left; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; white-space:nowrap; }
+td { padding:10px 12px; vertical-align:middle; }
+.trow { border-bottom:1px solid var(--border); transition:background .12s; }
+.trow:last-child { border-bottom:none; }
+.trow:hover { background:var(--surface2); }
+.trow.done { opacity:.5; }
+.trow.done .t-task { text-decoration:line-through; color:var(--muted); }
+.trow.carried { background:#FFFDF5; }
+
+.chk-wrap { display:flex; align-items:center; justify-content:center; }
+.chk { width:18px; height:18px; border-radius:50%; border:1.5px solid var(--border2); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s; background:white; }
+.chk:hover { border-color:var(--green); }
+.chk.on { background:var(--green); border-color:var(--green); }
+.chk .ck { display:none; }
+.chk.on .ck { display:block; }
+
+.t-time { font-size:12px; font-weight:600; color:var(--text2); white-space:nowrap; }
+.t-time.empty { color:var(--muted); font-size:11px; }
+.t-time-inp { font-size:12px; font-weight:600; color:var(--text2); border:none; background:transparent; font-family:var(--font); padding:0; width:72px; cursor:pointer; outline:none; border-radius:4px; transition:background .12s; }
+.t-time-inp:hover { background:var(--gray); }
+.t-time-inp:focus { background:var(--accent-l); color:var(--accent); cursor:text; }
+.t-time-inp::-webkit-calendar-picker-indicator { opacity:0; width:0; padding:0; margin:0; }
+
+.cat-wrap { display:flex; flex-wrap:wrap; gap:3px; max-width:100%; overflow:hidden; }
+.ctag { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:500; padding:2px 7px; border-radius:4px; line-height:1.4; white-space:nowrap; }
+.ctag-x { width:12px; height:12px; border:none; background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:.6; padding:0; border-radius:2px; flex-shrink:0; color:inherit; }
+.ctag-x:hover { opacity:1; background:rgba(0,0,0,.1); border-radius:2px; }
+.c-mt { background:var(--accent-l); color:var(--accent); }
+.c-fl { background:var(--orange-l); color:#B45309; }
+.c-rp { background:var(--purple-l); color:var(--purple); }
+.c-in { background:var(--green-l); color:#059669; }
+.c-ps { background:var(--gray); color:var(--text2); }
+.c-ok { background:#E8F4FF; color:#0066CC; }
+
+.t-task { font-size:13px; font-weight:500; }
+.editable { cursor:text; border-radius:4px; padding:1px 3px; margin:-1px -3px; transition:background .12s; outline:none; }
+.editable:hover, .editable:focus { background:var(--accent-l); }
+.editable:focus { outline:1px solid var(--accent); }
+
+.t-note { font-size:11px; color:var(--muted); line-height:1.4; }
+.ntag { display:inline-block; font-size:9px; padding:1px 5px; border-radius:3px; margin-right:3px; font-weight:600; }
+.n-carried { background:var(--orange-l); color:#B45309; }
+.n-recur { background:var(--purple-l); color:var(--purple); }
+
+.del-btn { width:24px; height:24px; border:none; background:transparent; border-radius:5px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--muted); opacity:0; transition:all .15s; }
+.trow:hover .del-btn { opacity:1; }
+.del-btn:hover { background:var(--red-l); color:var(--red); }
+.ro-tag { font-size:9px; color:var(--muted); }
+
+.empty-state { text-align:center; padding:40px 20px; color:var(--muted); }
+.empty-icon { font-size:32px; margin-bottom:8px; }
+
+/* ── INPUT ── */
+.input-area { position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); padding:12px 20px; box-shadow:0 -4px 20px rgba(0,0,0,.08); z-index:50; }
+.input-inner { max-width:940px; margin:0 auto; }
+.input-row { display:flex; align-items:flex-end; gap:10px; }
+.input-wrap { flex:1; background:var(--surface2); border:1.5px solid var(--border); border-radius:12px; padding:10px 14px; transition:border-color .15s; display:flex; align-items:flex-end; gap:8px; }
+.input-wrap:focus-within { border-color:var(--accent); background:white; box-shadow:0 0 0 3px rgba(59,111,232,.1); }
+textarea.inp { flex:1; border:none; background:transparent; resize:none; outline:none; font-family:var(--font); font-size:13px; color:var(--text); line-height:1.5; min-height:20px; max-height:80px; }
+textarea.inp::placeholder { color:var(--muted); }
+.mic-btn { width:30px; height:30px; border:none; background:transparent; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--muted); flex-shrink:0; transition:all .15s; }
+.mic-btn:hover { background:var(--accent-l); color:var(--accent); }
+.mic-btn.rec { background:var(--red-l); color:var(--red); animation:pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+.add-btn { height:42px; padding:0 18px; background:var(--accent); color:white; border:none; border-radius:10px; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background .15s; flex-shrink:0; }
+.add-btn:hover { background:var(--accent-h); }
+.add-btn:disabled { background:var(--border2); cursor:not-allowed; }
+.recur-quick-btn { height:42px; padding:0 14px; background:var(--surface); color:var(--text2); border:1.5px solid var(--border); border-radius:10px; font-family:var(--font); font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:5px; transition:all .15s; flex-shrink:0; white-space:nowrap; }
+.recur-quick-btn:hover { border-color:var(--purple); color:var(--purple); background:var(--purple-l); }
+.recur-quick-btn.active { border-color:var(--purple); color:var(--purple); background:var(--purple-l); }
+.inp-hint { font-size:11px; color:var(--muted); margin-top:6px; display:flex; align-items:center; gap:4px; flex-wrap:wrap; }
+.kb { background:var(--gray); padding:1px 6px; border-radius:4px; font-size:10px; }
+
+/* ── MODALS ── */
+.overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:200; align-items:center; justify-content:center; padding:20px; }
+.overlay.show { display:flex; }
+.modal { background:white; border-radius:16px; padding:24px; width:100%; max-width:460px; box-shadow:var(--sh3); max-height:85vh; overflow-y:auto; }
+.modal-title { font-size:15px; font-weight:700; margin-bottom:16px; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+.btn { padding:8px 16px; border-radius:8px; font-family:var(--font); font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .15s; }
+.btn-sec { background:var(--gray); color:var(--text2); }
+.btn-sec:hover { background:var(--border); }
+.btn-pri { background:var(--accent); color:white; }
+.btn-pri:hover { background:var(--accent-h); }
+.btn-danger { background:var(--red-l); color:var(--red); }
+.btn-danger:hover { background:#FEE2E2; }
+
+/* preview */
+.prev-list { display:flex; flex-direction:column; gap:8px; }
+.prev-item { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.pi-inp { border:1px solid var(--border); border-radius:5px; padding:2px 7px; font-size:12px; font-family:var(--font); color:var(--text); background:white; outline:none; transition:border-color .12s; }
+.pi-inp:focus { border-color:var(--accent); }
+.pi-inp-wide { flex:1; min-width:0; }
+.pi-inp-task { font-weight:600; }
+.pi-row { display:flex; gap:8px; align-items:baseline; margin-bottom:3px; flex-wrap:wrap; }
+.pi-f { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; white-space:nowrap; }
+.pi-v { font-size:12px; font-weight:500; }
+.pi-e { color:var(--muted); font-style:italic; font-weight:400; }
+
+/* form */
+.fg { margin-bottom:14px; }
+.flbl { font-size:11px; font-weight:600; color:var(--text2); margin-bottom:5px; display:block; text-transform:uppercase; letter-spacing:.5px; }
+.finp, .fsel { width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-family:var(--font); font-size:13px; color:var(--text); background:white; outline:none; transition:border-color .15s; }
+.finp:focus, .fsel:focus { border-color:var(--accent); }
+.fhint { font-size:11px; color:var(--muted); margin-top:4px; }
+.fhint a { color:var(--accent); text-decoration:none; }
+
+/* api status */
+.api-status { display:flex; align-items:center; gap:6px; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:500; margin-bottom:16px; }
+.as-ok { background:var(--green-l); color:#059669; }
+.as-none { background:var(--orange-l); color:#B45309; }
+.as-dot { width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
+/* supabase setup */
+.step { display:flex; gap:12px; margin-bottom:16px; }
+.step-num { width:24px; height:24px; border-radius:50%; background:var(--accent); color:white; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.step-body h4 { font-size:13px; font-weight:600; margin-bottom:4px; }
+.step-body p { font-size:12px; color:var(--text2); line-height:1.5; }
+.step-body a { color:var(--accent); }
+.step-body code { background:var(--gray); padding:1px 5px; border-radius:4px; font-size:11px; font-family:monospace; }
+.sql-block { background:#1E1E2E; color:#CDD6F4; padding:12px 14px; border-radius:8px; font-size:11px; font-family:monospace; line-height:1.6; margin-top:8px; overflow-x:auto; white-space:pre; }
+
+/* toast */
+.toast { position:fixed; top:64px; right:20px; background:#1A1F2E; color:white; padding:10px 16px; border-radius:10px; font-size:12px; font-weight:500; box-shadow:var(--sh3); z-index:400; opacity:0; transform:translateY(-8px); transition:all .25s; pointer-events:none; max-width:300px; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast.ok { background:var(--green); }
+.toast.err { background:var(--red); }
+.toast.warn { background:var(--orange); }
+
+/* ── RECUR EDITOR ── */
+.recur-modal { max-width:480px; }
+.recur-section { margin-bottom:16px; }
+.recur-section-title { font-size:11px; font-weight:600; color:var(--text2); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+.recur-freq-tabs { display:flex; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:12px; }
+.freq-tab { flex:1; padding:7px 4px; border:none; background:white; font-family:var(--font); font-size:12px; font-weight:500; color:var(--text2); cursor:pointer; transition:all .15s; text-align:center; border-right:1px solid var(--border); }
+.freq-tab:last-child { border-right:none; }
+.freq-tab.on { background:var(--accent); color:white; }
+.recur-row { display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+.recur-row label { font-size:12px; color:var(--text2); white-space:nowrap; }
+.recur-num { width:56px; padding:6px 8px; border:1.5px solid var(--border); border-radius:6px; font-family:var(--font); font-size:13px; text-align:center; outline:none; }
+.recur-num:focus { border-color:var(--accent); }
+.day-checks { display:flex; gap:6px; flex-wrap:wrap; }
+.day-chk { display:flex; align-items:center; gap:3px; cursor:pointer; }
+.day-chk input { cursor:pointer; accent-color:var(--accent); }
+.day-chk span { font-size:12px; color:var(--text2); }
+.end-radios { display:flex; flex-direction:column; gap:8px; }
+.end-radio { display:flex; align-items:center; gap:8px; }
+.end-radio input[type=radio] { cursor:pointer; accent-color:var(--accent); }
+.end-radio label { font-size:12px; color:var(--text2); white-space:nowrap; }
+.end-radio .finp-sm { width:130px; padding:5px 8px; border:1.5px solid var(--border); border-radius:6px; font-family:var(--font); font-size:12px; outline:none; }
+.end-radio .finp-sm:focus { border-color:var(--accent); }
+.recur-preview { background:var(--accent-l); border-radius:8px; padding:8px 12px; font-size:12px; color:var(--accent); font-weight:500; margin-top:4px; }
+.ntag-btn { display:inline-flex; align-items:center; gap:3px; font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px; background:var(--purple-l); color:var(--purple); cursor:pointer; border:none; font-family:var(--font); transition:opacity .15s; }
+.ntag-btn:hover { opacity:.75; }
+.ntag-btn svg { flex-shrink:0; }
+/* Category editor */
+.cat-editor-wrap { position:relative; display:inline-block; }
+.cat-dropdown { position:absolute; top:calc(100% + 4px); left:0; background:white; border:1px solid var(--border); border-radius:8px; box-shadow:var(--sh3); z-index:300; min-width:140px; padding:4px; max-height:320px; overflow-y:auto; }
+.cat-dropdown-item { display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:5px; cursor:pointer; font-size:12px; transition:background .12s; }
+.cat-dropdown-item:hover { background:var(--gray); }
+.cat-dropdown-item input[type=checkbox] { accent-color:var(--accent); cursor:pointer; }
+.cat-add-wrap { display:inline-flex; }
+.cat-add-btn { display:inline-flex; align-items:center; gap:2px; font-size:10px; font-weight:500; padding:2px 7px; border-radius:4px; background:var(--gray); color:var(--text2); cursor:pointer; border:1px dashed var(--border2); transition:all .12s; white-space:nowrap; }
+.cat-add-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-l); }
+.cat-dropdown-section { font-size:10px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; padding:4px 8px 2px; }
+.cat-dropdown-divider { border-top:1px solid var(--border); margin:4px 0; }
+.cat-custom-row { display:flex; align-items:center; gap:4px; padding:4px 8px; }
+.cat-custom-inp { flex:1; border:1.5px solid var(--border); border-radius:6px; padding:4px 7px; font-family:var(--font); font-size:12px; outline:none; color:var(--text); }
+.cat-custom-inp:focus { border-color:var(--accent); }
+.cat-custom-add { width:22px; height:22px; border:none; border-radius:5px; background:var(--accent); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+/* loading overlay */
+.loading-screen { position:fixed; inset:0; background:rgba(255,255,255,.9); z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+.loading-screen .spin { width:28px; height:28px; border-width:3px; }
+.loading-screen p { font-size:13px; color:var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tl">
+    <div class="logo">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+        <rect x="3" y="4" width="18" height="18" rx="2"/>
+        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+        <line x1="3" y1="10" x2="21" y2="10"/>
+        <circle cx="8.5" cy="15" r="1.2" fill="white" stroke="none"/>
+        <circle cx="15.5" cy="15" r="1.2" fill="white" stroke="none"/>
+      </svg>
+    </div>
+    <span class="app-name">日程助手</span>
+  </div>
+  <div class="tr">
+    <span class="sync-status sync-off" id="syncBadge">未连接</span>
+    <button class="icon-btn" onclick="manualSync()" title="立即同步">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+    </button>
+    <button class="icon-btn" onclick="openSettings()" title="设置">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+      </svg>
+    </button>
+    <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#3B6FE8,#8B5CF6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:white;cursor:pointer" onclick="openSettings()">我</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- SETUP BANNER -->
+  <div class="setup-banner" id="setupBanner" style="display:none">
+    <div>
+      <h3>☁️ 连接云端数据库，开启多端同步</h3>
+      <p>配置 Supabase 后，数据将自动同步到云端，电脑和手机均可访问</p>
+    </div>
+    <button class="setup-btn" onclick="openSetup()">立即配置 →</button>
+  </div>
+
+  <!-- WEEK CALENDAR -->
+  <div class="week-card">
+    <div class="week-hdr">
+      <span class="week-title" id="weekTitle"></span>
+      <div class="week-nav">
+        <button class="nav-btn" onclick="shiftWeek(-1)">‹</button>
+        <button class="nav-btn" onclick="shiftWeek(0)">今天</button>
+        <button class="nav-btn" onclick="shiftWeek(1)">›</button>
+      </div>
+    </div>
+    <div class="week-days" id="weekDays"></div>
+  </div>
+
+  <!-- TODO SECTION -->
+  <div class="sec-hdr">
+    <div class="sec-title">待办事项 <span class="date-lbl" id="dateLbl"></span></div>
+    <span class="pending-cnt" id="pendingCnt"></span>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-lbl">筛选</span>
+    <div class="chips">
+      <span class="chip on" data-f="all" onclick="toggleFilter(this)">全部</span>
+      <span class="chip" data-f="pending" onclick="toggleFilter(this)">待完成</span>
+      <span class="chip" data-f="done" onclick="toggleFilter(this)">已完成</span>
+    </div>
+  </div>
+
+  <div class="ai-bar" id="aiBar"><div class="spin"></div><span>AI 正在解析事项...</span></div>
+
+  <div class="todo-card">
+    <table>
+      <thead><tr>
+        <th style="width:36px"></th>
+        <th style="width:70px">时间</th>
+        <th style="width:185px">类别</th>
+        <th>事项</th>
+        <th style="width:155px">备注</th>
+        <th style="width:36px"></th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- INPUT -->
+<div class="input-area">
+  <div class="input-inner">
+    <div class="ai-bar" id="aiBarInline" style="margin-bottom:8px"></div>
+    <div class="input-row">
+      <div class="input-wrap">
+        <textarea class="inp" id="inp" placeholder="输入待办事项，支持自然语言，如「下周三下午3点和张总开项目评审会」" rows="1" onkeydown="onKey(event)" oninput="resize(this)"></textarea>
+        <button class="mic-btn" id="micBtn" onclick="toggleMic()" title="语音输入">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/>
+            <path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/>
+          </svg>
+        </button>
+      </div>
+      <button class="recur-quick-btn" id="recurQuickBtn" onclick="openRecurForInput()" title="设置循环规则">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10"/><path d="M1 20l4.64-4.36A9 9 0 0120.49 15"/>
+          <polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/>
+        </svg>
+        <span id="recurQuickLabel">循环</span>
+      </button>
+      <button class="add-btn" onclick="submitInput()" id="addBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+        添加
+      </button>
+    </div>
+    <div class="inp-hint">
+      <span class="kb">Enter</span> 添加 &nbsp;
+      <span class="kb">Shift+Enter</span> 换行 &nbsp;·&nbsp;
+      支持自然语言 &nbsp;·&nbsp; 🎤 语音输入
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFIRM MODAL ══ -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal">
+    <div class="modal-title">✅ 确认添加以下事项</div>
+    <div class="prev-list" id="prevList"></div>
+    <div class="modal-actions">
+      <button class="btn btn-sec" onclick="closeConfirm()">取消</button>
+      <button class="btn btn-pri" onclick="confirmAdd()">确认添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-title">⚙️ 设置</div>
+    <!-- tabs -->
+    <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--border)">
+      <button class="stab on" data-tab="cloud" onclick="switchTab(this)">☁️ 云端数据库</button>
+      <button class="stab" data-tab="ai" onclick="switchTab(this)">🤖 AI 配置</button>
+      <button class="stab" data-tab="data" onclick="switchTab(this)">📦 数据管理</button>
+    </div>
+    <div id="tab-cloud">
+      <div class="api-status as-none" id="dbStatus"><span class="as-dot"></span><span id="dbStatusTxt">尚未连接 Supabase</span></div>
+      <div class="fg">
+        <label class="flbl">Supabase URL</label>
+        <input class="finp" id="sbUrl" placeholder="https://xxxxxx.supabase.co">
+      </div>
+      <div class="fg">
+        <label class="flbl">Supabase Anon Key</label>
+        <input class="finp" id="sbKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+        <div class="fhint">在 Supabase 控制台 → Settings → API 中获取</div>
+      </div>
+      <div class="modal-actions" style="margin-top:0">
+        <button class="btn btn-sec" onclick="closeSettings()">关闭</button>
+        <button class="btn btn-pri" onclick="saveDbConfig()">保存并连接</button>
+      </div>
+      <div style="margin-top:16px">
+        <button class="btn btn-sec" style="font-size:11px;padding:5px 10px" onclick="openSetup()">查看 Supabase 建表指引 →</button>
+      </div>
+    </div>
+    <div id="tab-ai" style="display:none">
+      <div class="api-status as-none" id="aiStatus"><span class="as-dot"></span><span id="aiStatusTxt">尚未配置 AI</span></div>
+      <div class="fg">
+        <label class="flbl">供应商</label>
+        <select class="fsel" id="aiProvider" onchange="updateAiHint()">
+          <option value="">— 不启用 AI（手动模式）—</option>
+          <option value="deepseek">DeepSeek（推荐，低成本）</option>
+          <option value="openai">OpenAI（GPT-4o）</option>
+          <option value="claude">Claude（Anthropic）</option>
+          <option value="custom">自定义 Base URL</option>
+        </select>
+      </div>
+      <div class="fg" id="aiKeyGroup" style="display:none">
+        <label class="flbl">API Key</label>
+        <input class="finp" id="aiKey" type="password" placeholder="请输入 API Key">
+        <div class="fhint" id="aiHint"></div>
+      </div>
+      <div class="fg" id="aiBaseGroup" style="display:none">
+        <label class="flbl">Base URL</label>
+        <input class="finp" id="aiBase" placeholder="https://your-endpoint.com/v1">
+      </div>
+      <div class="modal-actions" style="margin-top:0">
+        <button class="btn btn-sec" onclick="closeSettings()">关闭</button>
+        <button class="btn btn-pri" onclick="saveAiConfig()">保存配置</button>
+      </div>
+    </div>
+    <div id="tab-data" style="display:none">
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">管理你的待办数据，支持导出备份或清空数据。</p>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-sec" style="text-align:left;justify-content:flex-start;display:flex;align-items:center;gap:8px" onclick="exportData('csv')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出所有数据为 CSV
+        </button>
+        <button class="btn btn-sec" style="text-align:left;justify-content:flex-start;display:flex;align-items:center;gap:8px" onclick="exportData('json')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出所有数据为 JSON
+        </button>
+        <button class="btn btn-danger" style="text-align:left;justify-content:flex-start;display:flex;align-items:center;gap:8px" onclick="clearAllData()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+          清空本地所有数据
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-sec" onclick="closeSettings()">关闭</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETUP GUIDE MODAL ══ -->
+<div class="overlay" id="setupOverlay">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-title">☁️ Supabase 云端配置指引</div>
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h4>注册 Supabase 账号</h4>
+        <p>访问 <a href="https://supabase.com" target="_blank">supabase.com</a>，免费注册账号并创建一个新项目（选择离你最近的区域，如 Singapore）</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h4>创建数据表</h4>
+        <p>进入项目 → <strong>SQL Editor</strong>，粘贴并运行以下 SQL：</p>
+        <div class="sql-block">CREATE TABLE todos (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  date text NOT NULL,
+  time text DEFAULT '',
+  cat jsonb DEFAULT '[]',
+  task text NOT NULL,
+  note text DEFAULT '',
+  done boolean DEFAULT false,
+  carried boolean DEFAULT false,
+  carried_from text DEFAULT '',
+  recurring boolean DEFAULT false,
+  recurring_rule text DEFAULT '',
+  recurring_parent_id text DEFAULT '',
+  recurring_expanded boolean DEFAULT false,
+  carry_count int DEFAULT 0,
+  source text DEFAULT '',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- 允许匿名读写（个人使用）
+ALTER TABLE todos ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow_all" ON todos FOR ALL USING (true) WITH CHECK (true);</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h4>获取连接信息</h4>
+        <p>进入 <strong>Settings → API</strong>，复制：<br>
+        · <code>Project URL</code>（形如 https://xxx.supabase.co）<br>
+        · <code>anon public</code> key（以 eyJ 开头的长字符串）</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h4>填入工具设置</h4>
+        <p>点击右上角设置图标 → 云端数据库，粘贴 URL 和 Key，保存连接即可</p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-pri" onclick="closeSetup();openSettings()">去填写连接信息 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RECUR EDITOR MODAL ══ -->
+<div class="overlay" id="recurOverlay">
+  <div class="modal recur-modal">
+    <div class="modal-title">🔁 设置循环规则</div>
+    <input type="hidden" id="recurTodoId">
+
+    <div class="recur-section">
+      <div class="recur-section-title">循环频率</div>
+      <div class="recur-freq-tabs">
+        <button class="freq-tab on" data-freq="DAILY" onclick="setFreqTab(this)">按天</button>
+        <button class="freq-tab" data-freq="WEEKLY" onclick="setFreqTab(this)">按周</button>
+        <button class="freq-tab" data-freq="MONTHLY" onclick="setFreqTab(this)">按月</button>
+        <button class="freq-tab" data-freq="YEARLY" onclick="setFreqTab(this)">按年</button>
+      </div>
+      <div class="recur-row">
+        <label>每隔</label>
+        <input class="recur-num" type="number" id="recurInterval" value="1" min="1" max="99" oninput="updateRecurPreview()">
+        <label id="recurIntervalUnit">天</label>
+        <label>重复一次</label>
+      </div>
+      <div id="recurWeekDays" style="display:none;margin-bottom:10px">
+        <div class="recur-section-title">重复日期</div>
+        <div class="day-checks">
+          <label class="day-chk"><input type="checkbox" value="MO" onchange="updateRecurPreview()"><span>周一</span></label>
+          <label class="day-chk"><input type="checkbox" value="TU" onchange="updateRecurPreview()"><span>周二</span></label>
+          <label class="day-chk"><input type="checkbox" value="WE" onchange="updateRecurPreview()"><span>周三</span></label>
+          <label class="day-chk"><input type="checkbox" value="TH" onchange="updateRecurPreview()"><span>周四</span></label>
+          <label class="day-chk"><input type="checkbox" value="FR" onchange="updateRecurPreview()"><span>周五</span></label>
+          <label class="day-chk"><input type="checkbox" value="SA" onchange="updateRecurPreview()"><span>周六</span></label>
+          <label class="day-chk"><input type="checkbox" value="SU" onchange="updateRecurPreview()"><span>周日</span></label>
+        </div>
+      </div>
+      <div id="recurMonthDay" style="display:none;margin-bottom:10px">
+        <div class="recur-row" style="margin-bottom:8px;gap:6px;align-items:center">
+          <input type="radio" name="monthType" id="mtDay" value="day" checked onchange="toggleMonthType()">
+          <label for="mtDay" style="cursor:pointer;margin:0">每月第</label>
+          <input class="recur-num" type="number" id="recurByMonthDay" value="1" min="1" max="31" oninput="updateRecurPreview()" style="width:52px">
+          <label style="margin:0">日</label>
+        </div>
+        <div class="recur-row" style="gap:6px;align-items:center">
+          <input type="radio" name="monthType" id="mtWeekday" value="weekday" onchange="toggleMonthType()">
+          <label for="mtWeekday" style="cursor:pointer;margin:0">每月第</label>
+          <select id="recurMonthWeekN" onchange="updateRecurPreview()" disabled style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer;background:white">
+            <option value="1">一</option>
+            <option value="2">二</option>
+            <option value="3">三</option>
+            <option value="4">四</option>
+            <option value="-1">最后一</option>
+          </select>
+          <label style="margin:0">个</label>
+          <select id="recurMonthWeekDay" onchange="updateRecurPreview()" disabled style="border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:12px;cursor:pointer;background:white">
+            <option value="MO">周一</option>
+            <option value="TU">周二</option>
+            <option value="WE">周三</option>
+            <option value="TH">周四</option>
+            <option value="FR">周五</option>
+            <option value="SA">周六</option>
+            <option value="SU">周日</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="recur-section">
+      <div class="recur-section-title">开始日期</div>
+      <div class="recur-row" style="gap:8px;align-items:center">
+        <input class="finp-sm" type="date" id="recurStartDate" oninput="updateRecurPreview()" style="flex:0 0 auto">
+        <span style="font-size:11px;color:var(--muted)">从该日期起展开第一个循环</span>
+      </div>
+    </div>
+
+    <div class="recur-section">
+      <div class="recur-section-title">重复范围</div>
+      <div class="end-radios">
+        <div class="end-radio">
+          <input type="radio" name="recurEnd" id="endNone" value="none" checked onchange="updateRecurPreview()">
+          <label for="endNone">无结束日期（自动生成12个月）</label>
+        </div>
+        <div class="end-radio">
+          <input type="radio" name="recurEnd" id="endDate" value="date" onchange="updateRecurPreview()">
+          <label for="endDate">结束日期</label>
+          <input class="finp-sm" type="date" id="recurEndDate" oninput="document.getElementById('endDate').checked=true;updateRecurPreview()">
+        </div>
+        <div class="end-radio">
+          <input type="radio" name="recurEnd" id="endCount" value="count" onchange="updateRecurPreview()">
+          <label for="endCount">重复</label>
+          <input class="finp-sm" type="number" id="recurEndCount" value="10" min="1" max="999" style="width:70px" oninput="document.getElementById('endCount').checked=true;updateRecurPreview()">
+          <label>次后结束</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="recur-preview" id="recurPreview">每天重复，无结束日期</div>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="removeRecurring()">移除循环</button>
+      <button class="btn btn-sec" onclick="closeRecur()">取消</button>
+      <button class="btn btn-pri" onclick="saveRecurring()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-screen" id="loadingScreen">
+  <div class="spin" style="width:28px;height:28px;border-width:3px;border-color:rgba(59,111,232,.2);border-top-color:var(--accent)"></div>
+  <p id="loadingMsg">正在加载数据...</p>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<style>
+.stab { padding:8px 14px; border:none; background:transparent; font-family:var(--font); font-size:12px; font-weight:600; color:var(--text2); cursor:pointer; border-bottom:2px solid transparent; transition:all .15s; margin-bottom:-1px; }
+.stab.on { color:var(--accent); border-bottom-color:var(--accent); }
+.stab:hover:not(.on) { color:var(--text); }
+</style>
+
+<script>
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+const TODAY = (() => { const d=new Date(); d.setHours(0,0,0,0); return d; })();
+let selDate = new Date(TODAY);
+let weekOff = 0;
+let filters = new Set(['all']);
+let todos = [];
+let pendingAdd = [];
+let nextLocalId = 1;
+let isRec = false;
+
+// Config
+let cfg = { sbUrl:'', sbKey:'', aiProvider:'', aiKey:'', aiBase:'' };
+
+const STORAGE_KEY = 'schedule_tool_v1';
+const CFG_KEY = 'schedule_tool_cfg_v1';
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+async function init() {
+  loadConfig();
+  loadLocalData();
+  hideLoading();
+  renderAll();
+
+  if (cfg.sbUrl && cfg.sbKey) {
+    await syncFromCloud();
+  } else {
+    document.getElementById('setupBanner').style.display = 'flex';
+    setSyncBadge('off');
+  }
+
+  // 每 30s 自动存本地；有云端连接时同步拉取（跳过正在编辑的情况）
+  setInterval(async () => {
+    saveLocalData();
+    if (cfg.sbUrl && cfg.sbKey && !document.querySelector('[contenteditable]:focus')) {
+      await syncFromCloud(true);
+    }
+  }, 30000);
+
+  // daily carry-over check (sequential — both mutate todos)
+  await checkCarryOver();
+  await expandExistingRecurring();
+}
+
+// ═══════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════
+function loadConfig() {
+  try {
+    const s = localStorage.getItem(CFG_KEY);
+    if (s) cfg = { ...cfg, ...JSON.parse(s) };
+  } catch(e) {}
+}
+function saveConfig() {
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+}
+
+// ═══════════════════════════════════════════════
+// LOCAL DATA
+// ═══════════════════════════════════════════════
+function loadLocalData() {
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+      const parsed = JSON.parse(s);
+      todos = parsed.todos || [];
+      nextLocalId = parsed.nextId || 1;
+    }
+  } catch(e) {}
+}
+function saveLocalData() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ todos, nextId: nextLocalId }));
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════════════
+// SUPABASE
+// ═══════════════════════════════════════════════
+function sbHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'apikey': cfg.sbKey,
+    'Authorization': `Bearer ${cfg.sbKey}`,
+    'Prefer': 'return=representation'
+  };
+}
+
+async function sbFetch(path, opts={}) {
+  const r = await fetch(cfg.sbUrl + '/rest/v1' + path, {
+    ...opts,
+    headers: { ...sbHeaders(), ...(opts.headers||{}) }
+  });
+  if (!r.ok) {
+    const txt = await r.text().catch(()=>'');
+    throw new Error(`Supabase error ${r.status}: ${txt}`);
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+function toRow(t) {
+  return {
+    id: t.cloudId || undefined,
+    date: t.date,
+    time: t.time || '',
+    cat: t.cat || [],
+    task: t.task,
+    note: t.note || '',
+    done: t.done || false,
+    carried: t.carried || false,
+    carried_from: t.carriedFrom || '',
+    recurring: t.recurring || false,
+    recurring_rule: t.recurringRule || '',
+    recurring_parent_id: t.recurringParentId || '',
+    recurring_expanded: t.recurringExpanded || false,
+    carry_count: t.carryCount || 0,
+    source: t.source || '',
+    updated_at: new Date().toISOString()
+  };
+}
+
+function fromRow(r) {
+  return {
+    cloudId: r.id,
+    localId: r.id,
+    date: r.date,
+    time: r.time || '',
+    cat: Array.isArray(r.cat) ? r.cat : JSON.parse(r.cat || '[]'),
+    task: r.task,
+    note: r.note || '',
+    done: r.done || false,
+    carried: r.carried || false,
+    carriedFrom: r.carried_from || '',
+    recurring: r.recurring || false,
+    recurringRule: r.recurring_rule || '',
+    recurringParentId: r.recurring_parent_id || '',
+    recurringExpanded: r.recurring_expanded || false,
+    carryCount: r.carry_count || 0,
+    source: r.source || ''
+  };
+}
+
+async function syncFromCloud(silent = false) {
+  if (!cfg.sbUrl || !cfg.sbKey) return false;
+  if (!silent) setSyncBadge('ing');
+  try {
+    const rows = await sbFetch('/todos?order=date.asc,time.asc');
+    todos = rows.map(fromRow);
+    nextLocalId = todos.reduce((max, t) => Math.max(max, Number(t.localId) || 0), 0) + 1;
+    saveLocalData();
+    if (!silent) setSyncBadge('ok');
+    renderAll();
+    document.getElementById('setupBanner').style.display = 'none';
+    return true;
+  } catch(e) {
+    if (!silent) {
+      setSyncBadge('err');
+      showToast('云端同步失败：' + e.message, 'err');
+    }
+    return false;
+  }
+}
+
+async function cloudInsert(t) {
+  if (!cfg.sbUrl || !cfg.sbKey) return null;
+  try {
+    const rows = await sbFetch('/todos', {
+      method: 'POST',
+      body: JSON.stringify(toRow(t))
+    });
+    return rows && rows[0] ? rows[0].id : null;
+  } catch(e) {
+    showToast('云端保存失败', 'err');
+    return null;
+  }
+}
+
+async function cloudUpdate(t) {
+  if (!cfg.sbUrl || !cfg.sbKey || !t.cloudId) return;
+  try {
+    const row = toRow(t);
+    delete row.id;
+    await sbFetch(`/todos?id=eq.${t.cloudId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(row)
+    });
+  } catch(e) {}
+}
+
+async function cloudDelete(cloudId) {
+  if (!cfg.sbUrl || !cfg.sbKey || !cloudId) return;
+  try {
+    await sbFetch(`/todos?id=eq.${cloudId}`, { method: 'DELETE' });
+  } catch(e) {}
+}
+
+async function manualSync() {
+  if (!cfg.sbUrl || !cfg.sbKey) {
+    openSetup();
+    return;
+  }
+  const ok = await syncFromCloud();
+  if (ok) showToast('同步完成 ✓', 'ok');
+}
+
+function setSyncBadge(state) {
+  const el = document.getElementById('syncBadge');
+  el.className = 'sync-status';
+  if (state === 'ok') { el.className += ' sync-ok'; el.textContent = '已同步'; }
+  else if (state === 'off') { el.className += ' sync-off'; el.textContent = '本地模式'; }
+  else if (state === 'err') { el.className += ' sync-err'; el.textContent = '同步失败'; }
+  else if (state === 'ing') { el.className += ' sync-ing'; el.textContent = '同步中...'; }
+}
+
+// ═══════════════════════════════════════════════
+// CARRY OVER
+// ═══════════════════════════════════════════════
+function isWorkday(d) {
+  const dow = d.getDay();
+  return dow !== 0 && dow !== 6;
+}
+function nextWorkday(d) {
+  const nd = new Date(d);
+  nd.setDate(nd.getDate() + 1);
+  while (!isWorkday(nd)) nd.setDate(nd.getDate() + 1);
+  return nd;
+}
+
+async function checkCarryOver() {
+  const yesterday = new Date(TODAY); yesterday.setDate(TODAY.getDate() - 1);
+  const yesterdayStr = fd(yesterday);
+  const todayNextWd = fd(nextWorkday(yesterday));
+
+  const overdue = todos.filter(t =>
+    t.date === yesterdayStr &&
+    !t.done &&
+    !t.recurring &&
+    !t.recurringParentId &&
+    t.source !== 'outlook' &&
+    (t.carryCount || 0) < 5 &&
+    // 跨设备去重：检查今天是否已存在该任务的顺延副本
+    !todos.some(c => c.carried && c.date >= fd(TODAY) && c.task === t.task)
+  );
+
+  for (const t of overdue) {
+    const carried = {
+      localId: nextLocalId++,
+      date: todayNextWd,
+      time: t.time,
+      cat: [...t.cat],
+      task: t.task,
+      note: t.note,
+      done: false,
+      carried: true,
+      carriedFrom: `${yesterday.getMonth()+1}月${yesterday.getDate()}日`,
+      recurring: t.recurring,
+      recurringRule: t.recurringRule,
+      source: '',
+      carryCount: (t.carryCount || 0) + 1
+    };
+    todos.push(carried);
+    if (cfg.sbUrl && cfg.sbKey) {
+      const cid = await cloudInsert(carried);
+      if (cid) carried.cloudId = cid;
+    }
+    // Mark original as carried
+    t.note = (t.note ? t.note + ' | ' : '') + '已顺延';
+    if (cfg.sbUrl && cfg.sbKey) cloudUpdate(t);
+  }
+
+  if (overdue.length > 0) {
+    saveLocalData();
+    renderAll();
+    showToast(`${overdue.length} 条未完成事项已自动顺延`, 'warn');
+  }
+}
+
+// ═══════════════════════════════════════════════
+// RENDER UTILS
+// ═══════════════════════════════════════════════
+function fd(d) {
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function isSame(a,b) { return fd(a)===fd(b); }
+
+const CAT_CLS = { '会议':'c-mt','跟进':'c-fl','报告':'c-rp','内部':'c-in','个人':'c-ps','Outlook':'c-ok' };
+
+// ═══════════════════════════════════════════════
+// WEEK CALENDAR
+// ═══════════════════════════════════════════════
+function renderWeek() {
+  const base = new Date(TODAY); base.setDate(base.getDate() + weekOff * 7);
+  const mon = new Date(base);
+  const dow = mon.getDay()===0?6:mon.getDay()-1;
+  mon.setDate(mon.getDate()-dow);
+  const months = new Set();
+  const cont = document.getElementById('weekDays');
+  cont.innerHTML = '';
+  const WN = ['一','二','三','四','五','六','日'];
+  for (let i=0; i<7; i++) {
+    const dd = new Date(mon); dd.setDate(mon.getDate()+i);
+    months.add(dd.getMonth()+1);
+    const ds = fd(dd);
+    const dt = todos.filter(t=>t.date===ds);
+    const pending = dt.filter(t=>!t.done).length;
+    const total = dt.length;
+    const density = Math.min(total/6,1);
+    const isToday = isSame(dd,TODAY);
+    const isSel = isSame(dd,selDate);
+    const cell = document.createElement('div');
+    cell.className='day-cell'+(isToday?' today':'')+(isSel&&!isToday?' selected':'');
+    cell.onclick=()=>{ selDate=new Date(dd); renderAll(); };
+    cell.innerHTML=`
+      <span class="day-name">周${WN[i]}</span>
+      <span class="day-num">${dd.getDate()}</span>
+      <div style="min-height:18px;display:flex;align-items:center">
+        ${total>0?`<span class="task-badge">${pending}/${total}</span>`:''}
+      </div>
+      <div class="density-bar"><div class="density-fill" style="width:${density*100}%"></div></div>`;
+    cont.appendChild(cell);
+  }
+  const yr = mon.getFullYear();
+  const mArr=[...months];
+  document.getElementById('weekTitle').textContent = mArr.length===1?`${yr}年${mArr[0]}月`:`${yr}年${mArr[0]}月·${mArr[1]}月`;
+}
+function shiftWeek(d) {
+  if(d===0){weekOff=0;selDate=new Date(TODAY);}
+  else weekOff+=d;
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════
+// TODO LIST
+// ═══════════════════════════════════════════════
+function renderTodo() {
+  const ds = fd(selDate);
+  const isToday = isSame(selDate,TODAY);
+  document.getElementById('dateLbl').textContent = isToday?'今天':`${selDate.getMonth()+1}月${selDate.getDate()}日`;
+  let items = todos.filter(t=>t.date===ds);
+  if (!filters.has('all')) {
+    items = items.filter(t=>{
+      if(filters.has('pending')&&!t.done) return true;
+      if(filters.has('done')&&t.done) return true;
+      return false;
+    });
+  }
+  items.sort((a,b)=>{
+    if(!a.time&&!b.time) return 0;
+    if(!a.time) return 1;
+    if(!b.time) return -1;
+    return a.time.localeCompare(b.time);
+  });
+  const all = todos.filter(t=>t.date===ds);
+  const pen = all.filter(t=>!t.done).length;
+  document.getElementById('pendingCnt').textContent = pen>0?`${pen} 项待完成`:(all.length>0?'全部完成 ✓':'');
+
+  const tbody = document.getElementById('tbody');
+  if (items.length===0) {
+    tbody.innerHTML=`<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">📋</div><div>暂无待办事项</div><div style="font-size:11px;margin-top:4px">在下方输入框添加</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = items.map(t=>{
+    const lid2 = t.cloudId || t.localId;
+    const catHtml = (t.cat||[]).map(c=>
+      t.source==='outlook'
+        ? `<span class="ctag ${CAT_CLS[c]||'c-ps'}">${escHtml(c)}</span>`
+        : `<span class="ctag ${CAT_CLS[c]||'c-ps'}">${escHtml(c)}<button class="ctag-x" onclick="event.stopPropagation();removeCat('${lid2}',${escHtml(JSON.stringify(c))})" title="移除"><svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="2" x2="8" y2="8"/><line x1="8" y1="2" x2="2" y2="8"/></svg></button></span>`
+    ).join('');
+    const carriedTag = t.carried ? `<span class="ntag n-carried">顺延自 ${escHtml(t.carriedFrom||'前日')}</span>` : '';
+    const noteHtml = t.note ? escHtml(t.note) : '';
+    const isOL = t.source==='outlook';
+    const lid = t.cloudId || t.localId;
+    // Recur button: always show for non-outlook items (to set or edit)
+    const recurBtnHtml = isOL ? '' : (t.recurring
+      ? `<button class="ntag-btn" onclick="openRecur('${lid}')"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M1 20l4.64-4.36A9 9 0 0120.49 15"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/></svg>${rruleToText(t.recurringRule)||'循环'}</button>`
+      : `<button class="ntag-btn" style="background:var(--gray);color:var(--text2)" onclick="openRecur('${lid}')"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>设置循环</button>`);
+    return `<tr class="trow${t.done?' done':''}${t.carried?' carried':''}" data-lid="${lid}">
+      <td><div class="chk-wrap"><div class="chk${t.done?' on':''}" onclick="toggleDone('${lid}')">
+        <svg class="ck" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="white" stroke-width="2.5"><polyline points="2,6 5,9 10,3"/></svg>
+      </div></div></td>
+      <td>${isOL
+        ? `<span class="t-time${!t.time?' empty':''}">${t.time||'—'}</span>`
+        : `<input type="time" class="t-time-inp" value="${t.time||''}" placeholder="—" data-lid="${lid}" onchange="saveTime('${lid}',this.value)" title="点击修改时间">`
+      }</td>
+      <td>
+        <div class="cat-wrap" style="flex-wrap:wrap;gap:3px;align-items:center">
+          ${catHtml}
+          ${isOL?'':`<span class="cat-add-btn" onclick="toggleCatDropdown(event,'${lid}')">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            编辑
+          </span>`}
+        </div>
+      </td>
+      <td><span class="t-task${isOL?'':' editable'}" ${isOL?'':'contenteditable="true"'} data-lid="${lid}" onblur="saveEdit('${lid}',this)">${escHtml(t.task)}</span></td>
+      <td><span class="t-note" style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">${recurBtnHtml?`<span>${recurBtnHtml}</span>`:''}${carriedTag?`<span>${carriedTag}</span>`:''}${noteHtml?`<span style='color:var(--muted)'>${noteHtml}</span>`:''}</span></td>
+      <td>${isOL?'<span class="ro-tag">只读</span>':`<button class="del-btn" onclick="deleteTodo('${lid}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg></button>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function findTodo(lid) {
+  return todos.find(t=>(t.cloudId||t.localId)==lid || String(t.cloudId)===String(lid) || String(t.localId)===String(lid));
+}
+
+async function toggleDone(lid) {
+  const t = findTodo(lid);
+  if (!t || t.source==='outlook') return;
+  const newDone = !t.done;
+  const family = findCarriedFamily(t);
+  for (const member of family) member.done = newDone;
+  saveLocalData(); renderAll();
+  showToast(newDone?'已完成 ✓':'已重新开启', newDone?'ok':'');
+  if (cfg.sbUrl && cfg.sbKey) {
+    setSyncBadge('ing');
+    for (const member of family) await cloudUpdate(member);
+    setSyncBadge('ok');
+  }
+}
+
+async function deleteTodo(lid) {
+  const t = findTodo(lid);
+  if (!t) return;
+
+  // If recurring, ask scope
+  if (t.recurring || t.recurringParentId) {
+    const deleteAll = confirm('这是一个循环事项\n\n点击「确定」删除所有关联循环事项\n点击「取消」仅删除本条');
+    if (deleteAll) {
+      // Delete all in this recurrence chain
+      const parentId = t.recurringParentId || t.cloudId || String(t.localId);
+      const toDelete = todos.filter(x =>
+        String(x.recurringParentId) === String(parentId) ||
+        String(x.cloudId || x.localId) === String(parentId)
+      );
+      todos = todos.filter(x =>
+        String(x.recurringParentId) !== String(parentId) &&
+        String(x.cloudId || x.localId) !== String(parentId)
+      );
+      saveLocalData(); renderAll();
+      showToast(`已删除全部 ${toDelete.length} 条循环事项`);
+      if (cfg.sbUrl && cfg.sbKey) {
+        for (const x of toDelete) { if (x.cloudId) await cloudDelete(x.cloudId); }
+      }
+    } else {
+      // Delete only this one
+      todos = todos.filter(x => String(x.cloudId||x.localId) !== String(lid));
+      saveLocalData(); renderAll();
+      showToast('已删除本条');
+      if (t.cloudId) await cloudDelete(t.cloudId);
+    }
+  } else {
+    // Check if this task has a carried family
+    const carriedFamily = findCarriedFamily(t);
+    if (carriedFamily.length > 1) {
+      const deleteAll = confirm(`此事项有 ${carriedFamily.length} 条相关顺延记录\n\n点击「确定」删除所有相关记录\n点击「取消」仅删除本条`);
+      if (deleteAll) {
+        const lids = new Set(carriedFamily.map(x => String(x.cloudId||x.localId)));
+        todos = todos.filter(x => !lids.has(String(x.cloudId||x.localId)));
+        saveLocalData(); renderAll();
+        showToast(`已删除全部 ${carriedFamily.length} 条相关记录`);
+        if (cfg.sbUrl && cfg.sbKey) {
+          for (const x of carriedFamily) { if (x.cloudId) await cloudDelete(x.cloudId); }
+        }
+      } else {
+        todos = todos.filter(x => String(x.cloudId||x.localId) !== String(lid));
+        saveLocalData(); renderAll();
+        showToast('已删除本条');
+        if (t.cloudId) await cloudDelete(t.cloudId);
+      }
+    } else {
+      todos = todos.filter(x => String(x.cloudId||x.localId) !== String(lid));
+      saveLocalData(); renderAll();
+      showToast('已删除');
+      if (t.cloudId) await cloudDelete(t.cloudId);
+    }
+  }
+}
+
+async function saveTime(lid, val) {
+  const t = findTodo(lid);
+  if (!t || t.time === val) return;
+  const newTime = val || '';
+  if (t.recurring) {
+    await syncRecurringFamily(t, { time: newTime });
+  } else {
+    await syncCarriedFamily(t, { time: newTime });
+  }
+}
+
+async function saveEdit(lid, el) {
+  const t = findTodo(lid);
+  const newVal = el.textContent.trim();
+  if (t && newVal && newVal !== t.task) {
+    if (t.recurring) {
+      await syncRecurringFamily(t, { task: newVal });
+    } else {
+      await syncCarriedFamily(t, { task: newVal });
+    }
+  } else if (t && !newVal) {
+    el.textContent = t.task;
+  }
+}
+
+// ═══════════════════════════════════════════════
+// FILTER
+// ═══════════════════════════════════════════════
+function toggleFilter(chip) {
+  const f = chip.dataset.f;
+  if (f==='all') {
+    filters=new Set(['all']);
+    document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+    chip.classList.add('on');
+  } else {
+    filters.delete('all');
+    document.querySelector('[data-f="all"]').classList.remove('on');
+    if (filters.has(f)) { filters.delete(f); chip.classList.remove('on'); }
+    else { filters.add(f); chip.classList.add('on'); }
+    if (filters.size===0) { filters.add('all'); document.querySelector('[data-f="all"]').classList.add('on'); }
+  }
+  renderTodo();
+}
+
+// ═══════════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════════
+function resize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; }
+function onKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();submitInput();} }
+
+// ── Local NLP: detect recurrence from Chinese text ──
+function detectRRule(text) {
+  // Returns { rrule, cleanText } or null
+  const t = text;
+
+  // 每天 / 每日
+  if (/每天|每日/.test(t)) return { rrule: 'FREQ=DAILY', cleanText: t };
+
+  // 工作日 / 每个工作日
+  if (/每个?工作日/.test(t)) return { rrule: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', cleanText: t };
+
+  // 每周X / 每周（无具体天）
+  const weekDayMap = { '一':'MO','二':'TU','三':'WE','四':'TH','五':'FR','六':'SA','日':'SU','天':'SU' };
+
+  // 每N周
+  const everyNWeek = t.match(/每(\d+)周(?:的?)(周|星期)?([一二三四五六日天])?/);
+  if (everyNWeek) {
+    const n = everyNWeek[1];
+    const day = everyNWeek[3] ? weekDayMap[everyNWeek[3]] : null;
+    return { rrule: `FREQ=WEEKLY;INTERVAL=${n}${day?';BYDAY='+day:''}`, cleanText: t };
+  }
+
+  // 每周X（含多天如 每周一三五）
+  const everyWeekMulti = t.match(/每周([一二三四五六日天]{1,7})/);
+  if (everyWeekMulti) {
+    const days = everyWeekMulti[1].split('').map(d => weekDayMap[d]).filter(Boolean);
+    return { rrule: `FREQ=WEEKLY${days.length?';BYDAY='+days.join(','):''}`, cleanText: t };
+  }
+
+  // 每周（无具体天，默认用添加当天）
+  if (/每周|每星期/.test(t)) {
+    // Use the day of selDate
+    const dow = selDate.getDay(); // 0=Sun
+    const JS2RRULE = ['SU','MO','TU','WE','TH','FR','SA'];
+    return { rrule: `FREQ=WEEKLY;BYDAY=${JS2RRULE[dow]}`, cleanText: t };
+  }
+
+  // 每月X号 / 每个月X号
+  const everyMonthDay = t.match(/每个?月(\d{1,2})(?:号|日)/);
+  if (everyMonthDay) return { rrule: `FREQ=MONTHLY;BYMONTHDAY=${everyMonthDay[1]}`, cleanText: t };
+
+  // 每月（无具体日，默认当天）
+  if (/每月|每个月/.test(t)) {
+    return { rrule: `FREQ=MONTHLY;BYMONTHDAY=${selDate.getDate()}`, cleanText: t };
+  }
+
+  // 每年
+  if (/每年|每隔一年/.test(t)) return { rrule: 'FREQ=YEARLY', cleanText: t };
+
+  return null;
+}
+
+// ── Extract time from text: HH:MM or X点X分 ──
+function detectTime(text) {
+  // Convert Chinese numerals to Arabic for time parsing
+  const ZH_NUM = {'零':0,'一':1,'两':2,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,'十':10,'十一':11,'十二':12};
+  function zhToNum(s) {
+    if (!s) return null;
+    // Try direct Arabic first
+    const n = parseInt(s, 10);
+    if (!isNaN(n)) return n;
+    // Multi-char Chinese like 十一、十二
+    if (ZH_NUM[s] !== undefined) return ZH_NUM[s];
+    // Single char
+    for (const [k,v] of Object.entries(ZH_NUM)) { if (s === k) return v; }
+    return null;
+  }
+
+  // HH:MM (Arabic colon)
+  const hm = text.match(/(\d{1,2})[：:](\d{2})/);
+  if (hm) return `${String(hm[1]).padStart(2,'0')}:${hm[2]}`;
+
+  // 前缀（上午/下午等）+ 中文或阿拉伯小时 + 点/时 + 可选分钟/半
+  // e.g. 早上八点半、下午三点、下午三点半、上午十点三十分、晚上八点
+  const ampmZh = text.match(/(上午|早上|下午|晚上)(十[一二]?|[零一二三四五六七八九十]|\d{1,2})(?:点|时)(半|(\d{1,2}|[零一二三四五六七八九十]{1,2})分)?/);
+  if (ampmZh) {
+    let h = zhToNum(ampmZh[2]);
+    if (h === null) h = parseInt(ampmZh[2], 10);
+    const minPart = ampmZh[3];
+    let m = 0;
+    if (minPart === '半') m = 30;
+    else if (minPart) { const mv = zhToNum(minPart.replace('分','')); m = mv !== null ? mv : parseInt(minPart, 10)||0; }
+    if ((ampmZh[1]==='下午'||ampmZh[1]==='晚上') && h < 12) h += 12;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  // 纯中文时间（无上下午前缀）: 八点半、三点、十点三十分
+  const zhTime = text.match(/(十[一二]?|[零一二三四五六七八九十]|\d{1,2})点(半|(\d{1,2}|[零一二三四五六七八九十]{1,2})分)?/);
+  if (zhTime) {
+    let h = zhToNum(zhTime[1]);
+    if (h === null) h = parseInt(zhTime[1], 10);
+    const minPart = zhTime[2];
+    let m = 0;
+    if (minPart === '半') m = 30;
+    else if (minPart) { const mv = zhToNum(minPart.replace('分','')); m = mv !== null ? mv : parseInt(minPart,10)||0; }
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  // 上午/下午 + 纯阿拉伯数字
+  const ampm = text.match(/(上午|早上|下午|晚上)(\d{1,2})(?:点|时)/);
+  if (ampm) {
+    let h = parseInt(ampm[2]);
+    if ((ampm[1]==='下午'||ampm[1]==='晚上') && h<12) h+=12;
+    return `${String(h).padStart(2,'0')}:00`;
+  }
+
+  return '';
+}
+
+// Strip recurrence and time keywords from task text
+function cleanTaskText(text) {
+  let t = text;
+
+  // Remove recurrence patterns
+  t = t.replace(/每个?工作日/g, '');
+  t = t.replace(/每\d+周(?:的?)?(?:周|星期)?[一二三四五六日天]?/g, '');
+  t = t.replace(/每周[一二三四五六日天]{1,7}/g, '');
+  t = t.replace(/每(?:周|星期)/g, '');
+  t = t.replace(/每天|每日/g, '');
+  t = t.replace(/每个?月\d{1,2}(?:号|日)/g, '');
+  t = t.replace(/每个?月/g, '');
+  t = t.replace(/每年/g, '');
+
+  // Remove time patterns (Chinese)
+  t = t.replace(/(?:上午|早上|下午|晚上)?(?:十[一二]?|[零一二三四五六七八九十]|\d{1,2})点(?:半|(?:\d{1,2}|[零一二三四五六七八九十]{1,2})分)?/g, '');
+  t = t.replace(/(?:上午|早上|下午|晚上)\d{1,2}(?:点|时)/g, '');
+
+  // Remove time patterns (Arabic HH:MM)
+  t = t.replace(/\d{1,2}[：:]\d{2}/g, '');
+
+  // Clean up leftover punctuation and whitespace
+  t = t.replace(/^[\s，,、。.]+|[\s，,、。.]+$/g, '').trim();
+  t = t.replace(/\s{2,}/g, ' ');
+
+  return t || text; // fallback to original if result is empty
+}
+
+function resetRecurQuickBtn() {
+  _pendingInputRrule = '';
+  document.getElementById('recurQuickLabel').textContent = '循环';
+  document.getElementById('recurQuickBtn').classList.remove('active');
+}
+
+async function submitInput() {
+  const inp = document.getElementById('inp');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value = ''; resize(inp);
+
+  // Always run local detection first (works regardless of AI config)
+  const detectedTime = detectTime(text);
+  const detectedRecur = detectRRule(text);
+  const hintRrule = _pendingInputRrule || (detectedRecur ? detectedRecur.rrule : '');
+
+  // If recurrence detected → show confirmation modal regardless of AI mode
+  if (hintRrule) {
+    const t = {
+      localId: nextLocalId++,
+      date: fd(selDate),
+      time: detectedTime,
+      cat: [],
+      task: cleanTaskText(text),
+      note: '',
+      done: false,
+      carried: false,
+      carriedFrom: '',
+      recurring: false,
+      recurringRule: '',
+      recurringExpanded: false,
+      source: ''
+    };
+    _pendingNewTodo = t;
+    openRecurForNewTodo(hintRrule);
+    resetRecurQuickBtn();
+    return;
+  }
+
+  // No recurrence detected
+  resetRecurQuickBtn();
+
+  if (!cfg.aiProvider || !cfg.aiKey) {
+    // Manual mode — add directly
+    const t = {
+      localId: nextLocalId++,
+      date: fd(selDate),
+      time: detectedTime,
+      cat: [],
+      task: cleanTaskText(text),
+      note: '',
+      done: false,
+      carried: false,
+      carriedFrom: '',
+      recurring: false,
+      recurringRule: '',
+      recurringExpanded: false,
+      source: ''
+    };
+    await addTodosAndExpand([t]);
+    showToast('已添加 ✓', 'ok');
+    return;
+  }
+
+  // AI mode
+  showAiBar(true);
+  document.getElementById('addBtn').disabled = true;
+  try {
+    const result = await callAI(text);
+    pendingAdd = result;
+    showConfirmModal(result);
+  } catch(e) {
+    showToast('AI 解析失败，以手动模式添加', 'err');
+    const t = { localId:nextLocalId++, date:fd(selDate), time:detectedTime, cat:[], task:cleanTaskText(text), note:'', done:false, carried:false, carriedFrom:'', recurring:false, recurringRule:'', recurringExpanded:false, source:'' };
+    await addTodosAndExpand([t]);
+  } finally {
+    showAiBar(false);
+    document.getElementById('addBtn').disabled = false;
+  }
+}
+
+function showAiBar(show) {
+  const el = document.getElementById('aiBar');
+  el.className = 'ai-bar' + (show?' show':'');
+  if(show) el.innerHTML='<div class="spin"></div><span>AI 正在解析事项...</span>';
+  const el2 = document.getElementById('aiBarInline');
+  el2.className = 'ai-bar' + (show?' show':'');
+  if(show) el2.innerHTML='<div class="spin"></div><span>AI 正在解析事项...</span>';
+  else el2.innerHTML='';
+}
+
+async function callAI(text) {
+  const yr=TODAY.getFullYear(),mo=TODAY.getMonth()+1,dd2=TODAY.getDate();
+  const wn=['日','一','二','三','四','五','六'][TODAY.getDay()];
+  const sys=`你是待办事项解析助手。当前日期：${yr}年${mo}月${dd2}日（周${wn}）。
+将用户输入解析为结构化待办，规则：
+1. time格式HH:MM（24小时制），无时间则空字符串
+2. cat从[会议,跟进,报告,内部,个人]选，无法判断则空数组
+3. date格式YYYY-MM-DD，未提及则空字符串
+4. 缺失字段严格留空，禁止猜测或推断
+5. 多条独立事项拆分为多条记录
+6. 相对时间（后天/下周三/月底）以当前日期换算，"下周"按周一起算
+7. task字段必须完整保留用户原始描述中的全部事项内容，禁止摘要、截断或省略任何细节（如主题、地点、备注等均应包含在task中），但无需重复time字段中已提取的时间表达
+只返回JSON数组，格式：[{"date":"","time":"","cat":[],"task":"","note":"","recurring":false,"recurringRule":""}]`;
+
+  const endpoints = {
+    deepseek: { url:'https://api.deepseek.com/v1/chat/completions', model:'deepseek-chat' },
+    openai:   { url:'https://api.openai.com/v1/chat/completions', model:'gpt-4o-mini' },
+    claude:   { url:'https://api.anthropic.com/v1/messages', model:'claude-haiku-4-5-20251001' },
+    custom:   { url: cfg.aiBase+'/chat/completions', model:'gpt-4o-mini' }
+  };
+
+  const ep = endpoints[cfg.aiProvider];
+  if (!ep) throw new Error('未知供应商');
+
+  let body, headers;
+  if (cfg.aiProvider === 'claude') {
+    headers = { 'Content-Type':'application/json', 'x-api-key':cfg.aiKey, 'anthropic-version':'2023-06-01' };
+    body = JSON.stringify({ model:ep.model, max_tokens:1000, system:sys, messages:[{role:'user',content:text}] });
+  } else {
+    headers = { 'Content-Type':'application/json', 'Authorization':`Bearer ${cfg.aiKey}` };
+    body = JSON.stringify({ model:ep.model, messages:[{role:'system',content:sys},{role:'user',content:text}] });
+  }
+
+  const r = await fetch(ep.url, { method:'POST', headers, body });
+  if (!r.ok) throw new Error('API HTTP '+r.status);
+  const data = await r.json();
+  let raw = cfg.aiProvider==='claude'
+    ? data.content[0].text
+    : data.choices[0].message.content;
+  raw = raw.replace(/```json|```/g,'').trim();
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) throw new Error('AI 返回格式错误');
+  const selDs = fd(selDate);
+  return parsed.map(item=>({
+    localId: nextLocalId++,
+    date: item.date || selDs,
+    time: item.time || '',
+    cat: item.cat || [],
+    task: item.task || '',
+    note: item.note || '',
+    done: false,
+    carried: false,
+    carriedFrom: '',
+    recurring: item.recurring || false,
+    recurringRule: item.recurringRule || '',
+    source: ''
+  }));
+}
+
+// ═══════════════════════════════════════════════
+// CONFIRM MODAL
+// ═══════════════════════════════════════════════
+function dateToWeekday(dateStr) {
+  if (!dateStr) return '';
+  const [y,m,d] = dateStr.split('-').map(Number);
+  if (!y) return '';
+  const day = new Date(y, m-1, d).getDay();
+  return ['周日','周一','周二','周三','周四','周五','周六'][day];
+}
+
+function showConfirmModal(items) {
+  document.getElementById('prevList').innerHTML = items.map((t, i)=>`
+    <div class="prev-item">
+      <div class="pi-row">
+        <span class="pi-f">日期</span>
+        <input type="date" class="pi-inp pi-date-inp" data-idx="${i}" data-field="date" value="${escHtml(t.date||'')}" oninput="this.nextElementSibling.textContent=dateToWeekday(this.value)">
+        <span style="font-size:12px;font-weight:600;color:var(--accent);min-width:28px">${dateToWeekday(t.date||'')}</span>
+        <span class="pi-f" style="margin-left:6px">时间</span>
+        <input type="time" class="pi-inp" data-idx="${i}" data-field="time" value="${escHtml(t.time||'')}" placeholder="无">
+      </div>
+      <div class="pi-row">
+        <span class="pi-f">类别</span>
+        <input type="text" class="pi-inp pi-inp-wide" data-idx="${i}" data-field="cat" value="${escHtml((t.cat||[]).join('、'))}" placeholder="无（多个用、分隔）">
+      </div>
+      <div class="pi-row" style="margin-bottom:0">
+        <span class="pi-f">事项</span>
+        <input type="text" class="pi-inp pi-inp-wide pi-inp-task" data-idx="${i}" data-field="task" value="${escHtml(t.task)}">
+      </div>
+      ${t.recurring?`<div class="pi-row" style="margin-bottom:0;margin-top:6px"><span class="pi-f">循环</span><span class="pi-v" style="font-size:11px;color:var(--accent)">${rruleToText(t.recurringRule)}</span></div>`:''}
+    </div>`).join('');
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); pendingAdd=[]; }
+
+// Convert RRULE to human-readable Chinese text
+function rruleToText(rrule) {
+  if (!rrule) return "";
+  // Strip any non-RRULE suffixes like " — 08:30"
+  const cleanRrule = rrule.split(/\s*[—–\-]{1,2}\s*\d/)[0].trim();
+  if (!cleanRrule.includes('=')) return cleanRrule.replace(/\s*[—–\-].*$/, '').trim();
+  const params = {};
+  cleanRrule.split(";").forEach(p => { const [k,v]=p.split("="); if(k&&v) params[k.trim().toUpperCase()]=v.trim().toUpperCase(); });
+  // DAY_ZH: BYDAY → 纯数字/字，不含"周"，拼接时统一加
+  const DAY_ZH = {MO:"一",TU:"二",WE:"三",TH:"四",FR:"五",SA:"六",SU:"日"};
+  const freq = params["FREQ"];
+  const interval = parseInt(params["INTERVAL"]||"1",10);
+  // byDays: ["一","三"] → "周一、周三"
+  const byDays = params["BYDAY"] ? params["BYDAY"].split(",").map(d=>DAY_ZH[d.replace(/[^A-Z]/g,"")] || d) : [];
+  const byDayStr = byDays.map(d => /^[一二三四五六日]$/.test(d) ? "周"+d : d).join("、");
+  if (freq==="DAILY") return interval===1?"每天":`每${interval}天`;
+  if (freq==="WEEKLY") {
+    // interval=1 → "每周一" / "每周一、周三"
+    // interval=2 → "每2周周一"
+    if (interval===1) return byDayStr ? "每"+byDayStr : "每周";
+    return byDayStr ? `每${interval}周${byDayStr}` : `每${interval}周`;
+  }
+  if (freq==="MONTHLY") {
+    if (params["BYMONTHDAY"]) return interval===1?`每月${params["BYMONTHDAY"]}日`:`每${interval}月${params["BYMONTHDAY"]}日`;
+    if (params["BYDAY"]) {
+      const posMatch = params["BYDAY"].match(/^(-?\d+)([A-Z]{2})$/);
+      if (posMatch) {
+        const pos = parseInt(posMatch[1]);
+        const dayZh = DAY_ZH[posMatch[2]] || posMatch[2];
+        const posZh = {1:'第一',2:'第二',3:'第三',4:'第四','-1':'最后一'}[pos] || `第${pos}`;
+        const s = `${posZh}个周${dayZh}`;
+        return interval===1?`每月${s}`:`每${interval}月${s}`;
+      }
+      if (byDayStr) return interval===1?`每月${byDayStr}`:`每${interval}月${byDayStr}`;
+    }
+    return interval===1?"每月":`每${interval}月`;
+  }
+  if (freq==="YEARLY") return interval===1?"每年":`每${interval}年`;
+  return cleanRrule;
+}
+
+// Build RRULE string from UI values
+function buildRRule(freq, interval, byDays, byMonthDay, endType, endDate, endCount, monthWeekN, monthWeekDay) {
+  let r = `FREQ=${freq}`;
+  if (interval > 1) r += `;INTERVAL=${interval}`;
+  if (freq==='WEEKLY' && byDays.length) r += `;BYDAY=${byDays.join(',')}`;
+  if (freq==='MONTHLY') {
+    if (monthWeekN && monthWeekDay) r += `;BYDAY=${monthWeekN}${monthWeekDay}`;
+    else if (byMonthDay) r += `;BYMONTHDAY=${byMonthDay}`;
+  }
+  if (endType==='date' && endDate) r += `;UNTIL=${endDate.replace(/-/g,'')}T000000Z`;
+  if (endType==='count' && endCount) r += `;COUNT=${endCount}`;
+  return r;
+}
+
+// ═══════════════════════════════════════════════
+// RRULE EXPANDER
+// ═══════════════════════════════════════════════
+// Parse a simple RRULE string and return array of date strings (YYYY-MM-DD)
+// starting from the given startDate, for up to 12 months.
+// Supported: FREQ=DAILY/WEEKLY/MONTHLY/YEARLY, INTERVAL, BYDAY, BYMONTHDAY,
+//            COUNT, UNTIL
+function expandRRule(startDateStr, rrule) {
+  if (!rrule) return [];
+  // Strip any non-RRULE suffix (e.g. " — 08:30")
+  rrule = rrule.split(/\s*[—–-]{1,2}\s*\d/)[0].trim();
+  if (!rrule.includes('=')) return [];
+  const params = {};
+  rrule.split(';').forEach(part => {
+    const [k, v] = part.split('=');
+    if (k && v) params[k.trim().toUpperCase()] = v.trim().toUpperCase();
+  });
+
+  const freq = params['FREQ'];
+  if (!freq) return [];
+  const interval = parseInt(params['INTERVAL'] || '1', 10);
+  const count = params['COUNT'] ? parseInt(params['COUNT'], 10) : null;
+  let until = null;
+  if (params['UNTIL']) {
+    const um = params['UNTIL'].match(/(\d{4})(\d{2})(\d{2})/);
+    if (um) until = new Date(+um[1], +um[2]-1, +um[3]);
+  }
+  // BYDAY: comma-separated like MO,TU,WE
+  const DAY_MAP = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+  const byDay = params['BYDAY'] ? params['BYDAY'].split(',').map(d => DAY_MAP[d.replace(/[^A-Z]/g,'')]).filter(d=>d!==undefined) : [];
+  const byMonthDay = params['BYMONTHDAY'] ? parseInt(params['BYMONTHDAY'], 10) : null;
+
+  // Parse as local date (not UTC) to avoid timezone shift
+  const [_sy, _sm, _sd] = startDateStr.split('-').map(Number);
+  const start = new Date(_sy, _sm - 1, _sd);
+  const maxDate = new Date(_sy, _sm - 1 + 12, _sd);
+
+  const results = [];
+  const MAX = count || 500;
+
+  if (freq === 'DAILY') {
+    let cur = new Date(start);
+    while (results.length < MAX) {
+      const ds = fd(cur);
+      if ((until && cur > until) || cur > maxDate) break;
+      results.push(ds);
+      cur.setDate(cur.getDate() + interval);
+    }
+  } else if (freq === 'WEEKLY') {
+    // Find all matching weekdays within each interval-week cycle
+    // Start from the Monday of the start week
+    const mon = new Date(start);
+    const dow = mon.getDay() === 0 ? 6 : mon.getDay() - 1;
+    mon.setDate(mon.getDate() - dow);
+
+    let weekStart = new Date(mon);
+    outer: while (results.length < MAX) {
+      if (weekStart > maxDate) break;
+      const daysToCheck = byDay.length > 0 ? byDay : [start.getDay() === 0 ? 0 : start.getDay()];
+      const sorted = [...daysToCheck].sort((a,b)=>a-b);
+      for (const d of sorted) {
+        const candidate = new Date(weekStart);
+        const jsDay = d;
+        const mondayJsDay = 1;
+        let offset = jsDay - mondayJsDay;
+        if (jsDay === 0) offset = 6; // Sunday is +6 from Monday
+        candidate.setDate(weekStart.getDate() + offset);
+        if (candidate < start) continue;
+        if ((until && candidate > until) || candidate > maxDate) break outer;
+        results.push(fd(candidate));
+        if (results.length >= MAX) break outer;
+      }
+      weekStart.setDate(weekStart.getDate() + 7 * interval);
+    }
+  } else if (freq === 'MONTHLY') {
+    let cur = new Date(start);
+    while (results.length < MAX) {
+      let candidate;
+      if (byMonthDay) {
+        candidate = new Date(cur.getFullYear(), cur.getMonth(), byMonthDay);
+        // Skip if day overflowed into next month (e.g. byMonthDay=31 in February)
+        if (candidate.getMonth() !== cur.getMonth()) { cur.setMonth(cur.getMonth() + interval); continue; }
+      } else if (byDay.length > 0) {
+        // Positional BYDAY: e.g. "1MO"=first Monday, "2TU"=2nd Tuesday, "-1FR"=last Friday
+        const posMatch = (params['BYDAY']||'').match(/^(-?\d+)([A-Z]{2})$/);
+        const targetDay = byDay[0];
+        if (posMatch) {
+          const pos = parseInt(posMatch[1]);
+          if (pos > 0) {
+            candidate = new Date(cur.getFullYear(), cur.getMonth(), 1);
+            let count = 0;
+            while (candidate.getMonth() === cur.getMonth()) {
+              if (candidate.getDay() === targetDay && ++count === pos) break;
+              candidate.setDate(candidate.getDate() + 1);
+            }
+          } else { // last (-1)
+            candidate = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+            while (candidate.getDay() !== targetDay) candidate.setDate(candidate.getDate() - 1);
+          }
+        } else {
+          // No position: first occurrence of the weekday in month
+          candidate = new Date(cur.getFullYear(), cur.getMonth(), 1);
+          while (candidate.getDay() !== targetDay) candidate.setDate(candidate.getDate()+1);
+        }
+      } else {
+        candidate = new Date(cur.getFullYear(), cur.getMonth(), start.getDate());
+      }
+      if (candidate >= start) {
+        if ((until && candidate > until) || candidate > maxDate) break;
+        results.push(fd(candidate));
+        if (results.length >= MAX) break;
+      }
+      cur.setMonth(cur.getMonth() + interval);
+    }
+  } else if (freq === 'YEARLY') {
+    let cur = new Date(start);
+    while (results.length < MAX) {
+      if ((until && cur > until) || cur > maxDate) break;
+      results.push(fd(cur));
+      cur.setFullYear(cur.getFullYear() + interval);
+    }
+  }
+
+  return results;
+}
+
+// Given a base todo with recurring=true and recurringRule set,
+// generate and return all expanded occurrence todos (excluding the first which already exists)
+function expandRecurringTodo(base) {
+  if (!base.recurring || !base.recurringRule) return [];
+  const dates = expandRRule(base.date, base.recurringRule);
+  // skip index 0 (that's the base itself)
+  return dates.slice(1).map(ds => ({
+    localId: nextLocalId++,
+    date: ds,
+    time: base.time,
+    cat: [...(base.cat||[])],
+    task: base.task,
+    note: base.note || '',
+    done: false,
+    carried: false,
+    carriedFrom: '',
+    recurring: true,
+    recurringRule: base.recurringRule,
+    recurringParentId: base.localId,
+    source: base.source || ''
+  }));
+}
+
+// ── Unified add: expand recurring, push to todos, sync to cloud ──
+async function addTodosAndExpand(items) {
+  const allToInsert = [];
+  for (const t of items) {
+    allToInsert.push(t);
+    if (t.recurring && t.recurringRule) {
+      t.recurringExpanded = true;
+      allToInsert.push(...expandRecurringTodo(t));
+    }
+  }
+  todos.push(...allToInsert);
+  saveLocalData();
+  renderAll();
+  if (cfg.sbUrl && cfg.sbKey) {
+    setSyncBadge('ing');
+    for (const t of allToInsert) {
+      const cid = await cloudInsert(t);
+      if (cid) {
+        t.cloudId = cid;
+        // If this is a parent, backfill its cloudId into children's recurringParentId
+        if (t.recurring && !t.recurringParentId) {
+          allToInsert.forEach(child => {
+            if (child !== t && String(child.recurringParentId) === String(t.localId)) {
+              child.recurringParentId = cid;
+            }
+          });
+        }
+      }
+    }
+    saveLocalData();
+    setSyncBadge('ok');
+  }
+}
+
+async function confirmAdd() {
+  // Read back any edits from the confirm modal inputs
+  document.querySelectorAll('#prevList .pi-inp').forEach(inp => {
+    const idx = parseInt(inp.dataset.idx);
+    const field = inp.dataset.field;
+    const t = pendingAdd[idx];
+    if (!t) return;
+    const val = inp.value.trim();
+    if (field === 'date') t.date = val || t.date;
+    else if (field === 'time') t.time = val;
+    else if (field === 'task') t.task = val || t.task;
+    else if (field === 'cat') t.cat = val ? val.split(/[、,，]/).map(s=>s.trim()).filter(Boolean) : [];
+  });
+  const cnt = pendingAdd.length;
+  const toAdd = [...pendingAdd];
+  pendingAdd = [];
+  closeConfirm();
+  await addTodosAndExpand(toAdd);
+  showToast(`已添加 ${cnt} 条事项 ✓`, 'ok');
+}
+
+// ═══════════════════════════════════════════════
+// MIC (Web Speech API)
+// ═══════════════════════════════════════════════
+let recognition = null;
+function toggleMic() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('当前浏览器不支持语音识别（推荐使用 Chrome）', 'err');
+    return;
+  }
+  if (isRec) {
+    recognition && recognition.stop();
+    isRec = false;
+    document.getElementById('micBtn').classList.remove('rec');
+    return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('inp').value = text;
+    resize(document.getElementById('inp'));
+    showToast('语音识别完成，可直接发送');
+  };
+  recognition.onerror = () => { showToast('语音识别失败', 'err'); };
+  recognition.onend = () => { isRec=false; document.getElementById('micBtn').classList.remove('rec'); };
+  recognition.start();
+  isRec = true;
+  document.getElementById('micBtn').classList.add('rec');
+  showToast('🎤 正在聆听...');
+}
+
+// ═══════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════
+function openSettings() {
+  document.getElementById('settingsOverlay').classList.add('show');
+  document.getElementById('sbUrl').value = cfg.sbUrl || '';
+  document.getElementById('sbKey').value = cfg.sbKey || '';
+  document.getElementById('aiProvider').value = cfg.aiProvider || '';
+  document.getElementById('aiKey').value = cfg.aiKey || '';
+  document.getElementById('aiBase').value = cfg.aiBase || '';
+  updateDbStatus();
+  updateAiStatus();
+  updateAiHint();
+}
+function closeSettings() { document.getElementById('settingsOverlay').classList.remove('show'); }
+
+function switchTab(btn) {
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  ['cloud','ai','data'].forEach(id=>{
+    const el=document.getElementById('tab-'+id);
+    if(el) el.style.display = id===btn.dataset.tab?'block':'none';
+  });
+}
+
+async function saveDbConfig() {
+  const url = document.getElementById('sbUrl').value.trim().replace(/\/$/,'');
+  const key = document.getElementById('sbKey').value.trim();
+  if (!url || !key) { showToast('请填写 URL 和 Key', 'err'); return; }
+  cfg.sbUrl = url;
+  cfg.sbKey = key;
+  saveConfig();
+  document.getElementById('settingsOverlay').classList.remove('show');
+  showToast('连接中...', 'ok');
+  const ok = await syncFromCloud();
+  if (ok) showToast('云端连接成功 ✓', 'ok');
+  updateDbStatus();
+  if (ok) document.getElementById('setupBanner').style.display = 'none';
+}
+
+function saveAiConfig() {
+  cfg.aiProvider = document.getElementById('aiProvider').value;
+  cfg.aiKey = document.getElementById('aiKey').value.trim();
+  cfg.aiBase = document.getElementById('aiBase').value.trim();
+  saveConfig();
+  updateAiStatus();
+  closeSettings();
+  showToast('AI 配置已保存 ✓', 'ok');
+}
+
+function updateDbStatus() {
+  const el = document.getElementById('dbStatus');
+  const txt = document.getElementById('dbStatusTxt');
+  if (cfg.sbUrl && cfg.sbKey) { el.className='api-status as-ok'; txt.textContent='已连接 Supabase'; }
+  else { el.className='api-status as-none'; txt.textContent='尚未连接 Supabase'; }
+}
+
+function updateAiStatus() {
+  const el = document.getElementById('aiStatus');
+  const txt = document.getElementById('aiStatusTxt');
+  if (cfg.aiProvider && cfg.aiKey) { el.className='api-status as-ok'; txt.textContent=`已配置 · ${cfg.aiProvider.toUpperCase()}`; }
+  else { el.className='api-status as-none'; txt.textContent='手动模式（未配置 AI）'; }
+}
+
+const AI_HINTS = {
+  deepseek:'获取 Key：<a href="https://platform.deepseek.com" target="_blank">platform.deepseek.com</a>（低价，推荐）',
+  openai:'获取 Key：<a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>',
+  claude:'获取 Key：<a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>',
+  custom:'填写完整 Base URL，如 https://your-endpoint.com/v1'
+};
+function updateAiHint() {
+  const p = document.getElementById('aiProvider').value;
+  document.getElementById('aiKeyGroup').style.display = p?'block':'none';
+  document.getElementById('aiBaseGroup').style.display = p==='custom'?'block':'none';
+  const h = document.getElementById('aiHint');
+  if(h) h.innerHTML = AI_HINTS[p]||'';
+}
+
+// ═══════════════════════════════════════════════
+// SETUP GUIDE
+// ═══════════════════════════════════════════════
+function openSetup() { document.getElementById('setupOverlay').classList.add('show'); }
+function closeSetup() { document.getElementById('setupOverlay').classList.remove('show'); }
+
+// ═══════════════════════════════════════════════
+// DATA EXPORT / CLEAR
+// ═══════════════════════════════════════════════
+function exportData(fmt) {
+  let content, mime, ext;
+  if (fmt==='csv') {
+    const rows = [['日期','时间','类别','事项','备注','已完成','已顺延','顺延来源','循环','循环规则']];
+    todos.forEach(t=>rows.push([t.date,t.time,(t.cat||[]).join(';'),t.task,t.note,t.done?'是':'否',t.carried?'是':'否',t.carriedFrom||'',t.recurring?'是':'否',t.recurringRule||'']));
+    content = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    mime='text/csv;charset=utf-8'; ext='csv';
+  } else {
+    content = JSON.stringify(todos, null, 2);
+    mime='application/json'; ext='json';
+  }
+  const blob = new Blob(['\uFEFF'+content], {type:mime});
+  const a = document.createElement('a');
+  const blobUrl = URL.createObjectURL(blob);
+  a.href = blobUrl;
+  a.download = `日程助手_${fd(TODAY)}.${ext}`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+  showToast(`已导出 ${ext.toUpperCase()} 文件`, 'ok');
+}
+
+async function clearAllData() {
+  const hasCloud = cfg.sbUrl && cfg.sbKey;
+  const msg = hasCloud
+    ? '确定要清空所有数据吗？\n\n本地和云端数据均会删除，此操作不可撤销。'
+    : '确定要清空所有本地数据吗？此操作不可撤销。';
+  if (!confirm(msg)) return;
+  const toDelete = [...todos];
+  todos = [];
+  saveLocalData();
+  renderAll();
+  if (hasCloud) {
+    setSyncBadge('ing');
+    for (const t of toDelete) { if (t.cloudId) await cloudDelete(t.cloudId); }
+    setSyncBadge('ok');
+  }
+  showToast('数据已全部清空');
+}
+
+// ═══════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════
+let toastT;
+function showToast(msg, type='') {
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  el.className='toast show'+(type?' '+type:'');
+  clearTimeout(toastT);
+  toastT=setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// ═══════════════════════════════════════════════
+// LOADING
+// ═══════════════════════════════════════════════
+function hideLoading() { document.getElementById('loadingScreen').style.display='none'; }
+
+// ═══════════════════════════════════════════════
+// RENDER ALL + CLICK OUTSIDE
+// ═══════════════════════════════════════════════
+// On load: expand any recurring todos that have no children yet
+async function expandExistingRecurring() {
+  // Only expand parents that have NOT been expanded yet (recurringExpanded flag)
+  const parents = todos.filter(t => t.recurring && t.recurringRule && !t.recurringParentId && !t.recurringExpanded && t.recurringExpanded !== 'true');
+  if (parents.length === 0) return;
+
+  const toExpand = [];
+  for (const p of parents) {
+    const pid = p.cloudId || String(p.localId);
+
+    // Check if children already exist in current todos list (synced from cloud)
+    const alreadyHasChildren = todos.some(t =>
+      t.recurringParentId && String(t.recurringParentId) === pid
+    );
+
+    p.recurringExpanded = true;
+
+    if (alreadyHasChildren) {
+      // Children already in cloud/local — just mark parent as expanded, skip insert
+      if (cfg.sbUrl && cfg.sbKey) await cloudUpdate(p);
+      continue;
+    }
+
+    // No children found — safe to expand
+    toExpand.push(...expandRecurringTodo(p));
+  }
+
+  if (toExpand.length > 0) {
+    todos.push(...toExpand);
+  }
+  saveLocalData();
+  renderAll();
+
+  if (cfg.sbUrl && cfg.sbKey && toExpand.length > 0) {
+    setSyncBadge('ing');
+    for (const p of parents) await cloudUpdate(p);
+    for (const t of toExpand) { const cid = await cloudInsert(t); if (cid) t.cloudId = cid; }
+    saveLocalData();
+    setSyncBadge('ok');
+  } else if (cfg.sbUrl && cfg.sbKey) {
+    // Still update parents to persist recurringExpanded flag
+    for (const p of parents) await cloudUpdate(p);
+  }
+}
+
+// ═══════════════════════════════════════════════
+// RECUR EDITOR
+// ═══════════════════════════════════════════════
+let _recurEditId = null;
+let _recurMode = 'todo'; // 'todo' = editing existing todo, 'input' = setting rule for next add
+let _pendingInputRrule = ''; // rrule set via quick button, applied on next submitInput
+let _pendingNewTodo = null; // todo object waiting for recur confirmation before being added
+const FREQ_UNITS = {DAILY:'天', WEEKLY:'周', MONTHLY:'月', YEARLY:'年'};
+
+function openRecur(lid) {
+  _recurEditId = lid;
+  _recurMode = 'todo';
+  const t = findTodo(lid);
+  document.getElementById('recurTodoId').value = lid;
+  // Reset modal title and danger button to default state
+  document.querySelector('#recurOverlay .modal-title').textContent = '🔁 设置循环规则';
+  const dangerBtn = document.querySelector('#recurOverlay .btn-danger');
+  dangerBtn.style.display = 'inline-flex';
+  dangerBtn.textContent = '移除循环';
+
+  // Parse existing RRULE if any
+  let freq='DAILY', interval=1, byDays=[], byMonthDay=1, endType='none', endDate='', endCount=10;
+  if (t && t.recurringRule) {
+    const cleanRrule = t.recurringRule.split(/\s*[—–\-]{1,2}\s*\d/)[0].trim();
+    const params = {};
+    cleanRrule.split(';').forEach(p=>{ const [k,v]=p.split('='); if(k&&v) params[k.toUpperCase()]=v.toUpperCase(); });
+    if (params.FREQ) freq = params.FREQ;
+    if (params.INTERVAL) interval = parseInt(params.INTERVAL,10);
+    if (params.BYDAY) byDays = params.BYDAY.split(',');
+    if (params.BYMONTHDAY) byMonthDay = parseInt(params.BYMONTHDAY,10);
+    if (params.UNTIL) { endType='date'; endDate=params.UNTIL.replace(/T.*$/,'').replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'); }
+    if (params.COUNT) { endType='count'; endCount=parseInt(params.COUNT,10); }
+  }
+
+  // Set freq tab
+  document.querySelectorAll('.freq-tab').forEach(b=>b.classList.toggle('on', b.dataset.freq===freq));
+  setFreqPanels(freq);
+  document.getElementById('recurInterval').value = interval;
+  document.getElementById('recurIntervalUnit').textContent = FREQ_UNITS[freq]||'天';
+
+  // Set weekday checkboxes
+  document.querySelectorAll('#recurWeekDays input[type=checkbox]').forEach(cb=>{
+    cb.checked = byDays.includes(cb.value);
+  });
+  if (t && t.recurringRule) {
+    const _p = {}; t.recurringRule.split(';').forEach(p=>{ const [k,v]=p.split('='); if(k&&v) _p[k.toUpperCase()]=v.toUpperCase(); });
+    restoreMonthlyUI(_p);
+  } else {
+    document.getElementById('mtDay').checked = true; toggleMonthType();
+  }
+
+  // Start date: use todo's current date (edit mode)
+  document.getElementById('recurStartDate').value = (t && t.date) ? t.date : fd(selDate);
+
+  // Set end type
+  document.getElementById('endNone').checked = endType==='none';
+  document.getElementById('endDate').checked = endType==='date';
+  document.getElementById('endCount').checked = endType==='count';
+  document.getElementById('recurEndDate').value = endDate;
+  document.getElementById('recurEndCount').value = endCount;
+
+  updateRecurPreview();
+  document.getElementById('recurOverlay').classList.add('show');
+}
+
+function closeRecur() {
+  document.getElementById('recurOverlay').classList.remove('show');
+  _recurEditId = null;
+  if (_recurMode === 'newtodo' && _pendingNewTodo) {
+    // User cancelled the recur dialog for a new todo — discard it silently
+    _pendingNewTodo = null;
+    showToast('已取消添加');
+  }
+  _recurMode = 'todo';
+}
+
+// Open recur editor for a freshly-typed todo — user confirms rule then item is added
+function openRecurForNewTodo(presetRrule) {
+  _recurMode = 'newtodo';
+  _recurEditId = null;
+
+  // Parse preset rrule into UI values
+  let freq='WEEKLY', interval=1, byDays=[], byMonthDay=selDate.getDate(), endType='none', endDate='', endCount=10;
+  if (presetRrule) {
+    const params = {};
+    presetRrule.split(';').forEach(p=>{ const [k,v]=p.split('='); if(k&&v) params[k.toUpperCase()]=v.toUpperCase(); });
+    if (params.FREQ) freq=params.FREQ;
+    if (params.INTERVAL) interval=parseInt(params.INTERVAL,10);
+    if (params.BYDAY) byDays=params.BYDAY.split(',');
+    if (params.BYMONTHDAY) byMonthDay=parseInt(params.BYMONTHDAY,10);
+    if (params.UNTIL) { endType='date'; endDate=params.UNTIL.replace(/T.*$/, '').replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'); }
+    if (params.COUNT) { endType='count'; endCount=parseInt(params.COUNT,10); }
+  }
+
+  document.querySelectorAll('.freq-tab').forEach(b=>b.classList.toggle('on', b.dataset.freq===freq));
+  setFreqPanels(freq);
+  document.getElementById('recurInterval').value = interval;
+  document.getElementById('recurIntervalUnit').textContent = ({DAILY:'天',WEEKLY:'周',MONTHLY:'月',YEARLY:'年'})[freq]||'周';
+  document.querySelectorAll('#recurWeekDays input[type=checkbox]').forEach(cb=>{ cb.checked=byDays.includes(cb.value); });
+  if (presetRrule) { const _p={}; presetRrule.split(';').forEach(p=>{ const [k,v]=p.split('='); if(k&&v) _p[k.toUpperCase()]=v.toUpperCase(); }); restoreMonthlyUI(_p); }
+  else { document.getElementById('mtDay').checked=true; toggleMonthType(); }
+  // Start date: use selDate (newtodo mode)
+  document.getElementById('recurStartDate').value = fd(selDate);
+  document.getElementById('endNone').checked = endType==='none';
+  document.getElementById('endDate').checked = endType==='date';
+  document.getElementById('endCount').checked = endType==='count';
+  document.getElementById('recurEndDate').value = endDate;
+  document.getElementById('recurEndCount').value = endCount;
+
+  document.querySelector('#recurOverlay .modal-title').textContent = '🔁 确认循环规则';
+  // In newtodo mode, repurpose "移除循环" button as "不设循环，直接添加"
+  const dangerBtn = document.querySelector('#recurOverlay .btn-danger');
+  dangerBtn.style.display = 'inline-flex';
+  dangerBtn.textContent = '不设循环，直接添加';
+  updateRecurPreview();
+  document.getElementById('recurOverlay').classList.add('show');
+}
+
+// Open recur editor in "input mode" — sets rule for the next todo to be added
+function openRecurForInput() {
+  _recurMode = 'input';
+  _recurEditId = null;
+
+  // Pre-populate from existing pending rule if any
+  let freq='WEEKLY', interval=1, byDays=[], byMonthDay=1, endType='none', endDate='', endCount=10;
+  if (_pendingInputRrule) {
+    const params = {};
+    _pendingInputRrule.split(';').forEach(p=>{ const [k,v]=p.split('='); if(k&&v) params[k.toUpperCase()]=v.toUpperCase(); });
+    if (params.FREQ) freq=params.FREQ;
+    if (params.INTERVAL) interval=parseInt(params.INTERVAL,10);
+    if (params.BYDAY) byDays=params.BYDAY.split(',');
+    if (params.BYMONTHDAY) byMonthDay=parseInt(params.BYMONTHDAY,10);
+    if (params.UNTIL) { endType='date'; endDate=params.UNTIL.replace(/T.*$/,'').replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'); }
+    if (params.COUNT) { endType='count'; endCount=parseInt(params.COUNT,10); }
+  }
+
+  document.querySelectorAll('.freq-tab').forEach(b=>b.classList.toggle('on', b.dataset.freq===freq));
+  setFreqPanels(freq);
+  document.getElementById('recurInterval').value=interval;
+  document.getElementById('recurIntervalUnit').textContent=({DAILY:'天',WEEKLY:'周',MONTHLY:'月',YEARLY:'年'})[freq]||'周';
+  document.querySelectorAll('#recurWeekDays input[type=checkbox]').forEach(cb=>{ cb.checked=byDays.includes(cb.value); });
+  if (_pendingInputRrule) { const _p={}; _pendingInputRrule.split(';').forEach(p=>{ const [k,v]=p.split('='); if(k&&v) _p[k.toUpperCase()]=v.toUpperCase(); }); restoreMonthlyUI(_p); }
+  else { document.getElementById('mtDay').checked=true; toggleMonthType(); }
+  // Start date: use selDate (input mode)
+  document.getElementById('recurStartDate').value = fd(selDate);
+  document.getElementById('endNone').checked=endType==='none';
+  document.getElementById('endDate').checked=endType==='date';
+  document.getElementById('endCount').checked=endType==='count';
+  document.getElementById('recurEndDate').value=endDate;
+  document.getElementById('recurEndCount').value=endCount;
+
+  // Change modal title & hide "remove" button
+  document.querySelector('#recurOverlay .modal-title').textContent='🔁 设置循环规则';
+  document.querySelector('#recurOverlay .btn-danger').style.display = _pendingInputRrule ? 'inline-flex' : 'none';
+
+  updateRecurPreview();
+  document.getElementById('recurOverlay').classList.add('show');
+}
+
+function setFreqTab(btn) {
+  document.querySelectorAll('.freq-tab').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const freq = btn.dataset.freq;
+  setFreqPanels(freq);
+  document.getElementById('recurIntervalUnit').textContent = FREQ_UNITS[freq]||'天';
+  updateRecurPreview();
+}
+
+function setFreqPanels(freq) {
+  document.getElementById('recurWeekDays').style.display = freq==='WEEKLY'?'block':'none';
+  document.getElementById('recurMonthDay').style.display = freq==='MONTHLY'?'block':'none';
+  if (freq !== 'MONTHLY') {
+    const mtDay = document.getElementById('mtDay');
+    if (mtDay) { mtDay.checked = true; toggleMonthType(); }
+  }
+}
+
+function toggleMonthType() {
+  const weekdayMode = document.getElementById('mtWeekday')?.checked;
+  document.getElementById('recurByMonthDay').disabled = !!weekdayMode;
+  document.getElementById('recurMonthWeekN').disabled = !weekdayMode;
+  document.getElementById('recurMonthWeekDay').disabled = !weekdayMode;
+  // Visual opacity
+  document.getElementById('recurByMonthDay').style.opacity = weekdayMode ? '0.4' : '1';
+  document.getElementById('recurMonthWeekN').style.opacity = weekdayMode ? '1' : '0.4';
+  document.getElementById('recurMonthWeekDay').style.opacity = weekdayMode ? '1' : '0.4';
+  updateRecurPreview();
+}
+
+// Restore monthly UI state from parsed RRULE params
+function restoreMonthlyUI(params) {
+  const byday = params.BYDAY || '';
+  const posMatch = byday.match(/^(-?\d+)([A-Z]{2})$/);
+  if (posMatch && !params.BYMONTHDAY) {
+    document.getElementById('mtWeekday').checked = true;
+    document.getElementById('recurMonthWeekN').value = posMatch[1];
+    document.getElementById('recurMonthWeekDay').value = posMatch[2];
+  } else {
+    document.getElementById('mtDay').checked = true;
+    if (params.BYMONTHDAY) document.getElementById('recurByMonthDay').value = parseInt(params.BYMONTHDAY, 10);
+  }
+  toggleMonthType();
+}
+
+function getRecurValues() {
+  const freq = (document.querySelector('.freq-tab.on')||{dataset:{freq:'DAILY'}}).dataset.freq;
+  const interval = parseInt(document.getElementById('recurInterval').value||'1',10);
+  const byDays = [...document.querySelectorAll('#recurWeekDays input:checked')].map(c=>c.value);
+  const monthType = document.querySelector('input[name=monthType]:checked')?.value || 'day';
+  const byMonthDay = monthType === 'day' ? parseInt(document.getElementById('recurByMonthDay').value||'1',10) : 0;
+  const monthWeekN = monthType === 'weekday' ? document.getElementById('recurMonthWeekN').value : '';
+  const monthWeekDay = monthType === 'weekday' ? document.getElementById('recurMonthWeekDay').value : '';
+  const startDate = document.getElementById('recurStartDate').value;
+  const endType = document.querySelector('input[name=recurEnd]:checked')?.value||'none';
+  const endDate = document.getElementById('recurEndDate').value;
+  const endCount = parseInt(document.getElementById('recurEndCount').value||'10',10);
+  return {freq, interval, byDays, byMonthDay, monthWeekN, monthWeekDay, startDate, endType, endDate, endCount};
+}
+
+function updateRecurPreview() {
+  const v = getRecurValues();
+  const rrule = buildRRule(v.freq, v.interval, v.byDays, v.byMonthDay, v.endType, v.endDate, v.endCount, v.monthWeekN, v.monthWeekDay);
+  let text = rruleToText(rrule);
+  if (v.startDate) text = `从 ${v.startDate} 起，` + text;
+  const endType = v.endType;
+  if (endType==='none') text += '，无结束日期';
+  else if (endType==='date' && v.endDate) text += `，至 ${v.endDate}`;
+  else if (endType==='count') text += `，共 ${v.endCount} 次`;
+  document.getElementById('recurPreview').textContent = text;
+}
+
+async function saveRecurring() {
+  // NEWTODO MODE: apply rule to pending todo and add it
+  if (_recurMode === 'newtodo') {
+    const v = getRecurValues();
+    const rrule = buildRRule(v.freq, v.interval, v.byDays, v.byMonthDay, v.endType, v.endDate, v.endCount, v.monthWeekN, v.monthWeekDay);
+    if (_pendingNewTodo) {
+      _pendingNewTodo.recurring = true;
+      _pendingNewTodo.recurringRule = rrule;
+      _pendingNewTodo.recurringExpanded = false;
+      const expandFrom = v.startDate || fd(selDate);
+      const firstDates = expandRRule(expandFrom, rrule);
+      if (firstDates.length > 0) _pendingNewTodo.date = firstDates[0];
+      const todo = _pendingNewTodo;
+      _pendingNewTodo = null;
+      closeRecur();
+      await addTodosAndExpand([todo]);
+      showToast(`已添加并展开循环：${rruleToText(rrule)} ✓`, 'ok');
+    } else {
+      closeRecur();
+    }
+    return;
+  }
+
+  // INPUT MODE: just store the rrule for next submitInput
+  if (_recurMode === 'input') {
+    const v = getRecurValues();
+    _pendingInputRrule = buildRRule(v.freq, v.interval, v.byDays, v.byMonthDay, v.endType, v.endDate, v.endCount, v.monthWeekN, v.monthWeekDay);
+    // Update quick button label
+    const label = rruleToText(_pendingInputRrule);
+    document.getElementById('recurQuickLabel').textContent = label;
+    document.getElementById('recurQuickBtn').classList.add('active');
+    closeRecur();
+    showToast(`循环规则已设置：${label}`, 'ok');
+    return;
+  }
+
+  const lid = _recurEditId;
+  const t = findTodo(lid);
+  if (!t) return;
+
+  const v = getRecurValues();
+  const newRrule = buildRRule(v.freq, v.interval, v.byDays, v.byMonthDay, v.endType, v.endDate, v.endCount, v.monthWeekN, v.monthWeekDay);
+
+  // If this is a child (has recurringParentId), ask scope
+  const isChild = !!t.recurringParentId;
+  let scope = 'single';
+  if (isChild || t.recurring) {
+    const choice = confirm('修改循环规则\n\n点击「确定」修改此条及之后所有关联事项\n点击「取消」仅修改本条');
+    scope = choice ? 'all' : 'single';
+  }
+
+  if (scope === 'all') {
+    // Find the root parent
+    const parentId = t.recurringParentId || t.localId || t.cloudId;
+    // Collect all existing items in this chain for cloud deletion
+    const chainToDelete = todos.filter(x =>
+      String(x.recurringParentId) === String(parentId) ||
+      String(x.localId||x.cloudId) === String(parentId)
+    );
+    // Remove all existing children of this recurrence
+    todos = todos.filter(x => String(x.recurringParentId) !== String(parentId) && String(x.localId||x.cloudId) !== String(parentId));
+    // Cloud: delete all old chain items
+    if (cfg.sbUrl && cfg.sbKey) {
+      for (const x of chainToDelete) { if (x.cloudId) await cloudDelete(x.cloudId); }
+    }
+    // Re-create parent with new rule, starting from user-selected date
+    const newStartStr = v.startDate || t.date;
+    const newFirstDates = expandRRule(newStartStr, newRrule);
+    const newBaseDate = newFirstDates.length > 0 ? newFirstDates[0] : newStartStr;
+    const parent = {
+      localId: nextLocalId++,
+      date: newBaseDate,
+      time: t.time,
+      cat: [...(t.cat||[])],
+      task: t.task,
+      note: t.note||'',
+      done: false,
+      carried: false,
+      carriedFrom: '',
+      recurring: true,
+      recurringRule: newRrule,
+      recurringExpanded: true,
+      source: t.source||''
+    };
+    await addTodosAndExpand([parent]);
+  } else {
+    // Single: just update this item's rule, mark as standalone (clear parent)
+    t.recurring = true;
+    t.recurringRule = newRrule;
+    t.recurringParentId = '';
+    t.recurringExpanded = true;
+    if (cfg.sbUrl && cfg.sbKey) await cloudUpdate(t);
+  }
+
+  saveLocalData();
+  renderAll();
+  closeRecur();
+  showToast('循环规则已保存 ✓', 'ok');
+}
+
+async function removeRecurring() {
+  // NEWTODO MODE: user chose "no recur" — add the todo without recurring
+  if (_recurMode === 'newtodo') {
+    if (_pendingNewTodo) {
+      _pendingNewTodo.recurring = false;
+      _pendingNewTodo.recurringRule = '';
+      const todo = _pendingNewTodo;
+      _pendingNewTodo = null;
+      closeRecur();
+      await addTodosAndExpand([todo]);
+      showToast('已添加（不循环）✓', 'ok');
+    } else {
+      closeRecur();
+    }
+    return;
+  }
+
+  // INPUT MODE: just clear the pending rule
+  if (_recurMode === 'input') {
+    _pendingInputRrule = '';
+    document.getElementById('recurQuickLabel').textContent = '循环';
+    document.getElementById('recurQuickBtn').classList.remove('active');
+    closeRecur();
+    showToast('已清除循环设置');
+    return;
+  }
+  const lid = _recurEditId;
+  const t = findTodo(lid);
+  if (!t) return;
+  if (!confirm('确定移除循环？\n\n点击「确定」删除本条及所有关联循环事项\n点击「取消」仅移除本条的循环标记')) {
+    // just remove flag on this one
+    t.recurring = false;
+    t.recurringRule = '';
+    t.recurringParentId = '';
+    if (cfg.sbUrl && cfg.sbKey) await cloudUpdate(t);
+    saveLocalData(); renderAll(); closeRecur();
+    showToast('已移除本条循环标记');
+    return;
+  }
+  // Remove all related
+  const parentId = t.recurringParentId || t.localId || t.cloudId;
+  const toDelete = todos.filter(x => String(x.recurringParentId)===String(parentId) || String(x.localId||x.cloudId)===String(parentId));
+  todos = todos.filter(x => String(x.recurringParentId)!==String(parentId) && String(x.localId||x.cloudId)!==String(parentId));
+  if (cfg.sbUrl && cfg.sbKey) {
+    setSyncBadge('ing');
+    for (const x of toDelete) { if(x.cloudId) await cloudDelete(x.cloudId); }
+    setSyncBadge('ok');
+  }
+  saveLocalData(); renderAll(); closeRecur();
+  showToast('已删除所有关联循环事项');
+}
+
+// ── Category Editor ──
+const DEFAULT_CATS = ['会议','跟进','报告','内部','个人'];
+let _openCatDropdown = null;
+let _openCatLid = null;
+
+function buildCatDropdown(lid) {
+  const t = findTodo(lid);
+  if (!t) return null;
+  const cur = t.cat || [];
+
+  // Collect history cats from all todos (excluding defaults)
+  const historyCats = [...new Set(
+    todos.flatMap(td => (td.cat||[]).filter(c => !DEFAULT_CATS.includes(c)))
+  )];
+  // Merge: defaults + history + current todo's cats
+  const allCats = [...new Set([...DEFAULT_CATS, ...historyCats, ...cur])];
+
+  const dropdown = document.createElement('div');
+  dropdown.className = 'cat-dropdown';
+  dropdown.onclick = e => e.stopPropagation();
+
+  // Preset options
+  const sec = document.createElement('div');
+  sec.className = 'cat-dropdown-section';
+  sec.textContent = '预设类别';
+  dropdown.appendChild(sec);
+
+  DEFAULT_CATS.forEach(c => {
+    const label = document.createElement('label');
+    label.className = 'cat-dropdown-item';
+    label.innerHTML = `
+      <input type="checkbox" value="${c}" ${cur.includes(c)?'checked':''}>
+      <span class="ctag ${CAT_CLS[c]||'c-ps'}">${c}</span>`;
+    label.querySelector('input').addEventListener('change', async (ev) => {
+      const t2 = findTodo(lid);
+      if (!t2) return;
+      const val = ev.target.value;
+      const newCat = ev.target.checked
+        ? (t2.cat.includes(val) ? t2.cat : [...t2.cat, val])
+        : t2.cat.filter(x => x !== val);
+      if (t2.recurring) {
+        await syncRecurringFamily(t2, { cat: newCat });
+      } else {
+        await syncCarriedFamily(t2, { cat: newCat });
+      }
+      if (_openCatDropdown) {
+        const newDd = buildCatDropdown(lid);
+        _openCatDropdown.replaceWith(newDd);
+        _openCatDropdown = newDd;
+      }
+    });
+    dropdown.appendChild(label);
+  });
+
+  // History cats section (custom cats used across all todos)
+  if (historyCats.length > 0) {
+    const divH = document.createElement('div');
+    divH.className = 'cat-dropdown-divider';
+    dropdown.appendChild(divH);
+    const secH = document.createElement('div');
+    secH.className = 'cat-dropdown-section';
+    secH.textContent = '历史类别';
+    dropdown.appendChild(secH);
+    historyCats.forEach(c => {
+      const label = document.createElement('label');
+      label.className = 'cat-dropdown-item';
+      label.innerHTML = `
+        <input type="checkbox" value="${escHtml(c)}" ${cur.includes(c)?'checked':''}>
+        <span class="ctag c-ps">${escHtml(c)}</span>`;
+      label.querySelector('input').addEventListener('change', async (ev) => {
+        const t2 = findTodo(lid);
+        if (!t2) return;
+        const val = ev.target.value;
+        const newCat = ev.target.checked
+          ? (t2.cat.includes(val) ? t2.cat : [...t2.cat, val])
+          : t2.cat.filter(x => x !== val);
+        if (t2.recurring) {
+          await syncRecurringFamily(t2, { cat: newCat });
+        } else {
+          await syncCarriedFamily(t2, { cat: newCat });
+        }
+        if (_openCatDropdown) {
+          const newDd = buildCatDropdown(lid);
+          _openCatDropdown.replaceWith(newDd);
+          _openCatDropdown = newDd;
+        }
+      });
+      dropdown.appendChild(label);
+    });
+  }
+
+  // Divider + custom input
+  const div = document.createElement('div');
+  div.className = 'cat-dropdown-divider';
+  dropdown.appendChild(div);
+
+  const sec2 = document.createElement('div');
+  sec2.className = 'cat-dropdown-section';
+  sec2.textContent = '自定义类别';
+  dropdown.appendChild(sec2);
+
+  const customRow = document.createElement('div');
+  customRow.className = 'cat-custom-row';
+  customRow.innerHTML = `
+    <input class="cat-custom-inp" id="catCustomInp_${lid}" placeholder="输入新类别...">
+    <button class="cat-custom-add" onclick="addCustomCat('${lid}')">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>`;
+  // Allow Enter to add
+  customRow.querySelector('input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addCustomCat(lid); }
+    e.stopPropagation();
+  });
+  dropdown.appendChild(customRow);
+
+  return dropdown;
+}
+
+function toggleCatDropdown(e, lid) {
+  e.stopPropagation();
+  // Close existing
+  if (_openCatDropdown) {
+    _openCatDropdown.remove();
+    _openCatDropdown = null;
+    if (_openCatLid === lid) { _openCatLid = null; return; }
+  }
+  _openCatLid = lid;
+  const btn = e.currentTarget;
+  const dropdown = buildCatDropdown(lid);
+  if (!dropdown) return;
+
+  // Mount to body to escape overflow:hidden containers
+  dropdown.style.position = 'fixed';
+  dropdown.style.zIndex = '9999';
+  document.body.appendChild(dropdown);
+
+  // Position below the button
+  const rect = btn.getBoundingClientRect();
+  const ddH = dropdown.offsetHeight || 300;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  if (spaceBelow < ddH && rect.top > ddH) {
+    // Not enough space below — show above
+    dropdown.style.top = (rect.top - ddH - 4) + 'px';
+  } else {
+    dropdown.style.top = (rect.bottom + 4) + 'px';
+  }
+  dropdown.style.left = rect.left + 'px';
+
+  _openCatDropdown = dropdown;
+
+  setTimeout(() => {
+    document.addEventListener('click', function handler(ev) {
+      if (_openCatDropdown && !_openCatDropdown.contains(ev.target)) {
+        _openCatDropdown.remove();
+        _openCatDropdown = null;
+        _openCatLid = null;
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 0);
+}
+
+async function addCustomCat(lid) {
+  const inp = document.getElementById('catCustomInp_' + lid);
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) return;
+  const t = findTodo(lid);
+  if (!t) return;
+  if (!t.cat.includes(val)) {
+    const newCat = [...t.cat, val];
+    if (t.recurring) {
+      await syncRecurringFamily(t, { cat: newCat });
+    } else {
+      await syncCarriedFamily(t, { cat: newCat });
+    }
+  }
+  inp.value = '';
+  // Rebuild dropdown
+  if (_openCatDropdown) {
+    const newDd = buildCatDropdown(lid);
+    _openCatDropdown.replaceWith(newDd);
+    _openCatDropdown = newDd;
+    const newInp = document.getElementById('catCustomInp_' + lid);
+    if (newInp) newInp.focus();
+  }
+}
+
+// Find all todos belonging to the same recurring series as t
+function findRecurringFamily(t) {
+  if (!t.recurring) return [t];
+  const parentCid = t.recurringParentId ? String(t.recurringParentId) : String(t.cloudId || t.localId);
+  const parentLid = t.recurringParentId
+    ? (() => { const p = todos.find(td => td.recurring && !td.recurringParentId &&
+        (String(td.cloudId) === String(t.recurringParentId) || String(td.localId) === String(t.recurringParentId)));
+        return p ? String(p.localId) : null; })()
+    : String(t.localId);
+  return todos.filter(td => {
+    if (!td.recurring) return false;
+    if (!td.recurringParentId) {
+      return String(td.cloudId || td.localId) === parentCid || String(td.localId) === parentLid;
+    }
+    return String(td.recurringParentId) === parentCid || (parentLid && String(td.recurringParentId) === parentLid);
+  });
+}
+
+// Find all tasks related by carry chain (same task name, at least one is carried)
+function findCarriedFamily(t) {
+  const name = t.task;
+  const anyCarried = todos.some(td => td.task === name && td.carried);
+  if (!anyCarried && !t.carried) return [t];
+  return todos.filter(td => td.task === name);
+}
+
+async function syncCarriedFamily(t, fields) {
+  const family = findCarriedFamily(t);
+  for (const member of family) Object.assign(member, fields);
+  saveLocalData(); renderAll();
+  if (cfg.sbUrl && cfg.sbKey) {
+    setSyncBadge('ing');
+    for (const member of family) await cloudUpdate(member);
+    setSyncBadge('ok');
+  }
+}
+
+// Apply field changes to all members of the same recurring series
+async function syncRecurringFamily(t, fields) {
+  const family = findRecurringFamily(t);
+  for (const member of family) Object.assign(member, fields);
+  saveLocalData();
+  renderAll();
+  if (cfg.sbUrl && cfg.sbKey) {
+    setSyncBadge('ing');
+    for (const member of family) await cloudUpdate(member);
+    setSyncBadge('ok');
+  }
+}
+
+async function removeCat(lid, cat) {
+  const t = findTodo(lid);
+  if (!t) return;
+  const newCat = (t.cat||[]).filter(c => c !== cat);
+  if (t.recurring) {
+    await syncRecurringFamily(t, { cat: newCat });
+  } else {
+    await syncCarriedFamily(t, { cat: newCat });
+  }
+}
+
+// Close dropdown on scroll
+document.addEventListener('scroll', (e) => {
+  if (_openCatDropdown && !_openCatDropdown.contains(e.target)) {
+    _openCatDropdown.remove(); _openCatDropdown = null; _openCatLid = null;
+  }
+}, true);
+
+function renderAll() { renderWeek(); renderTodo(); }
+
+document.querySelectorAll('.overlay').forEach(el=>{
+  el.addEventListener('click', e=>{ if(e.target===el) el.classList.remove('show'); });
+});
+
+// ═══════════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
